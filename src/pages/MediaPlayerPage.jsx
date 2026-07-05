@@ -38,6 +38,7 @@ export default function MediaPlayerPage() {
   const [loading, setLoading] = useState(true)
   const [locked, setLocked] = useState(false)
   const [playbackUrl, setPlaybackUrl] = useState('')
+  const [playbackSourceType, setPlaybackSourceType] = useState('')
   const [playing, setPlaying] = useState(true)
   const [volume, setVolume] = useState(0.8)
   const [muted, setMuted] = useState(false)
@@ -49,12 +50,16 @@ export default function MediaPlayerPage() {
   const [showControls, setShowControls] = useState(true)
   const controlsTimer = useRef(null)
   const edgeTimer = useRef(null)
+  const playbackRetryTimer = useRef(null)
+  const playbackRetryCount = useRef(0)
+  const [playbackAttempt, setPlaybackAttempt] = useState(0)
 
   useEffect(() => {
     fetchMedia()
     return () => {
       clearTimeout(controlsTimer.current)
       clearTimeout(edgeTimer.current)
+      clearTimeout(playbackRetryTimer.current)
     }
   }, [id])
 
@@ -66,6 +71,7 @@ export default function MediaPlayerPage() {
       setMediaData(m)
       setLocked(isLocked)
       setPlaybackUrl('')
+      setPlaybackSourceType('')
       setCollectionItems([m, ...(m.collectionItems || [])].sort((a, b) => (
         (a.seasonNumber || 0) - (b.seasonNumber || 0)
         || (a.episodeNumber || 0) - (b.episodeNumber || 0)
@@ -82,6 +88,9 @@ export default function MediaPlayerPage() {
         const playbackRes = await mediaService.getPlayback(id)
         const playback = playbackRes.data.data.playback
         setPlaybackUrl(mediaService.resolveStreamUrl(playback.streamUrl))
+        setPlaybackSourceType(playback.sourceType || '')
+        playbackRetryCount.current = 0
+        setPlaybackAttempt((value) => value + 1)
       }
     } catch (err) {
       toast.error('Media not found')
@@ -188,6 +197,35 @@ export default function MediaPlayerPage() {
     }
   }
 
+  const refreshPlaybackUrl = async () => {
+    const playbackRes = await mediaService.getPlayback(id)
+    const playback = playbackRes.data.data.playback
+    const nextUrl = mediaService.resolveStreamUrl(playback.streamUrl)
+    if (!nextUrl) throw new Error('Missing playback URL')
+    setPlaybackUrl(nextUrl)
+    setPlaybackSourceType(playback.sourceType || '')
+    setPlaybackAttempt((value) => value + 1)
+    setPlaying(true)
+  }
+
+  const handlePlaybackError = (error) => {
+    console.error('Media playback error', error)
+    clearTimeout(playbackRetryTimer.current)
+
+    if (playbackRetryCount.current < 2) {
+      playbackRetryCount.current += 1
+      playbackRetryTimer.current = setTimeout(() => {
+        refreshPlaybackUrl().catch((err) => {
+          console.error('Playback refresh failed', err)
+          toast.error('Playback failed. Please try again in a moment.')
+        })
+      }, 700)
+      return
+    }
+
+    toast.error('Playback failed. Please try again in a moment.')
+  }
+
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/watch/${id}`
     try {
@@ -224,7 +262,7 @@ export default function MediaPlayerPage() {
 
   if (!media) return null
 
-  const streamUrl = playbackUrl || mediaService.getStreamUrl(id)
+  const streamUrl = playbackUrl || mediaService.resolveStreamUrl(mediaService.getStreamUrl(id))
 
   return (
     <div className="animate-fade-in">
@@ -272,6 +310,7 @@ export default function MediaPlayerPage() {
               onClick={() => setShowControls((value) => !value)}>
 
               <ReactPlayer
+                key={`${id}-${playbackAttempt}`}
                 ref={playerRef}
                 url={streamUrl}
                 playing={playing}
@@ -284,11 +323,18 @@ export default function MediaPlayerPage() {
                   setProgress(playedSeconds)
                 }}
                 onDuration={(d) => { setLocalDuration(d); setDuration(d) }}
-                onError={(error) => {
-                  console.error('Media playback error', error)
-                  toast.error('Playback failed. Please try again in a moment.')
+                onReady={() => { playbackRetryCount.current = 0 }}
+                onError={handlePlaybackError}
+                config={{
+                  file: {
+                    forceHLS: playbackSourceType === 'hls' || streamUrl.includes('.m3u8') || streamUrl.includes('/hls'),
+                    attributes: {
+                      controlsList: 'nodownload',
+                      playsInline: true,
+                      crossOrigin: 'anonymous',
+                    },
+                  },
                 }}
-                config={{ file: { attributes: { controlsList: 'nodownload' } } }}
               />
 
               <div
