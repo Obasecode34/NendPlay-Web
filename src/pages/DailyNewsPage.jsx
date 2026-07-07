@@ -90,9 +90,9 @@ function NewsCard({ article, featured = false, onOpen }) {
       }}
       className={`group cursor-pointer overflow-hidden rounded-2xl bg-white text-slate-950 shadow-[0_14px_42px_rgba(15,23,42,0.14)] transition-transform hover:-translate-y-1 ${featured ? 'max-w-4xl' : ''}`}
     >
-      <div className={`relative overflow-hidden ${featured ? 'aspect-[16/7]' : 'aspect-[16/9]'}`}>
+      <div className={`relative overflow-hidden bg-slate-100 ${featured ? 'aspect-[16/8]' : 'aspect-[16/9]'}`}>
         {imageUrl ? (
-          <img src={imageUrl} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+          <img src={imageUrl} alt="" className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105" loading="lazy" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-sky-100 via-white to-purple-100">
             <RiGlobalLine className="text-5xl text-sky-600" />

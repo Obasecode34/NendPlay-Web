@@ -245,13 +245,13 @@ export default function NewsArticlePage() {
             </div>
           </div>
 
-          <div className="relative mt-8 overflow-hidden rounded-3xl bg-slate-100">
+          <div className="relative mt-8 aspect-video overflow-hidden rounded-3xl bg-slate-100">
             <span className="absolute left-5 top-5 z-10 rounded-xl bg-purple-700 px-4 py-2 text-xs font-black uppercase tracking-wide text-white">
               {category}
             </span>
             {heroVideo ? (
               <>
-                <ReactPlayer url={heroVideo.url} width="100%" height="520px" controls playsinline />
+                <ReactPlayer url={heroVideo.url} width="100%" height="100%" controls playsinline />
                 <div className="pointer-events-none absolute inset-0 grid place-items-center">
                   <div className="grid h-20 w-20 place-items-center rounded-full bg-white/95 text-purple-700 shadow-xl">
                     <RiPlayFill size={34} />
@@ -259,9 +259,9 @@ export default function NewsArticlePage() {
                 </div>
               </>
             ) : heroImage ? (
-              <img src={heroImage.url} alt="" className="h-[360px] w-full object-cover md:h-[520px]" />
+              <img src={heroImage.url} alt="" className="h-full w-full object-cover object-center" />
             ) : (
-              <div className="grid h-[360px] place-items-center text-purple-700 md:h-[520px]">
+              <div className="grid h-full place-items-center text-purple-700">
                 <RiBookOpenLine size={64} />
               </div>
             )}
@@ -269,8 +269,8 @@ export default function NewsArticlePage() {
 
           <div className="mt-8 space-y-5">
             {remainingVideos.map((item, index) => (
-              <div key={`${item.url}-${index}`} className="overflow-hidden rounded-2xl bg-black">
-                <ReactPlayer url={item.url} width="100%" height="420px" controls playsinline />
+              <div key={`${item.url}-${index}`} className="aspect-video overflow-hidden rounded-2xl bg-black">
+                <ReactPlayer url={item.url} width="100%" height="100%" controls playsinline />
               </div>
             ))}
             {audios.map((item, index) => (
@@ -280,7 +280,9 @@ export default function NewsArticlePage() {
               </div>
             ))}
             {remainingImages.map((item, index) => (
-              <img key={`${item.url}-${index}`} src={item.url} alt="" className="w-full rounded-2xl object-cover" />
+              <div key={`${item.url}-${index}`} className="aspect-video overflow-hidden rounded-2xl bg-slate-100">
+                <img src={item.url} alt="" className="h-full w-full object-cover object-center" />
+              </div>
             ))}
           </div>
 
