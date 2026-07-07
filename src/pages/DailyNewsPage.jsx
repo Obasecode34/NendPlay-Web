@@ -88,9 +88,9 @@ function NewsCard({ article, featured = false, onOpen }) {
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') onOpen(article)
       }}
-      className={`group cursor-pointer overflow-hidden rounded-[28px] bg-white text-slate-950 shadow-[0_22px_70px_rgba(15,23,42,0.18)] transition-transform hover:-translate-y-1 ${featured ? 'max-w-5xl' : ''}`}
+      className={`group cursor-pointer overflow-hidden rounded-2xl bg-white text-slate-950 shadow-[0_14px_42px_rgba(15,23,42,0.14)] transition-transform hover:-translate-y-1 ${featured ? 'max-w-4xl' : ''}`}
     >
-      <div className={`relative overflow-hidden ${featured ? 'aspect-[16/8]' : 'aspect-[16/10]'}`}>
+      <div className={`relative overflow-hidden ${featured ? 'aspect-[16/7]' : 'aspect-[16/9]'}`}>
         {imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
         ) : (
@@ -98,48 +98,48 @@ function NewsCard({ article, featured = false, onOpen }) {
             <RiGlobalLine className="text-5xl text-sky-600" />
           </div>
         )}
-        <span className="absolute left-5 top-5 rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-5 py-2 text-xs font-black uppercase tracking-wide text-white shadow-lg">
+        <span className="absolute left-4 top-4 rounded-full bg-gradient-to-r from-blue-600 to-sky-500 px-4 py-1.5 text-[10px] font-black uppercase tracking-wide text-white shadow-lg">
           {category}
         </span>
       </div>
 
-      <div className={featured ? 'p-7 md:p-9' : 'p-5'}>
-        <div className="mb-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-500">
+      <div className={featured ? 'p-5 md:p-7' : 'p-4'}>
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
           <span className="inline-flex items-center gap-2">
-            <RiCalendarLine className="text-lg" />
+            <RiCalendarLine className="text-base" />
             {formatDate(article.publishedAt || article.createdAt)}
           </span>
           <span aria-hidden="true">&bull;</span>
           <span className="inline-flex items-center gap-2">
-            <RiTimeLine className="text-lg" />
+            <RiTimeLine className="text-base" />
             {estimateReadTime(article)}
           </span>
         </div>
 
         <h2
-          className={`${featured ? 'text-3xl md:text-5xl' : 'text-2xl'} font-black leading-tight text-slate-950`}
+          className={`${featured ? 'text-2xl md:text-4xl' : 'text-lg md:text-xl'} font-black leading-tight text-slate-950`}
           style={{ fontFamily: 'Georgia, Cambria, serif' }}
         >
           {title}
         </h2>
 
         {excerpt && (
-          <p className={`${featured ? 'mt-5 text-lg leading-8' : 'mt-4 text-sm leading-6'} line-clamp-3 text-slate-500`}>
+          <p className={`${featured ? 'mt-4 text-base leading-7' : 'mt-3 text-sm leading-5'} line-clamp-2 text-slate-500`}>
             {excerpt}
           </p>
         )}
 
-        <div className="mt-6 flex items-center justify-between border-t border-slate-200 pt-5">
-          <span className="inline-flex items-center gap-2 text-base font-black text-blue-700">
-            Read more <RiArrowRightLine className="text-2xl" />
+        <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4">
+          <span className="inline-flex items-center gap-2 text-sm font-black text-blue-700">
+            Read more <RiArrowRightLine className="text-xl" />
           </span>
           <button
             type="button"
             onClick={(event) => event.stopPropagation()}
-            className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className="rounded-full p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
             aria-label="Bookmark story"
           >
-            <RiBookmarkLine className="text-2xl" />
+            <RiBookmarkLine className="text-xl" />
           </button>
         </div>
       </div>
@@ -345,12 +345,11 @@ export default function DailyNewsPage() {
       ) : (
         <>
           {featured && <div className="mb-4"><NewsCard article={featured} featured onOpen={openArticle} /></div>}
-          <InArticleAd placement={feedAdPlacement} className="mb-4" />
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {rest.map((article, index) => (
               <React.Fragment key={article._id || article.id || index}>
                 <NewsCard article={article} onOpen={openArticle} />
-                {(index + 1) % 6 === 0 && (
+                {(index + (featured ? 2 : 1)) % 4 === 0 && (
                   <div className="md:col-span-2 xl:col-span-3">
                     <InArticleAd placement={feedAdPlacement} />
                   </div>
