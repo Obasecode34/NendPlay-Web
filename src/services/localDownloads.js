@@ -34,19 +34,15 @@ function snapshotFrom(download = {}, fallback = {}) {
 export async function cacheDownloadFile({ fileUrl, contentType, contentId }) {
   if (!fileUrl) throw new Error('No file URL available for this download.')
   const storageKey = `/__nendplay_downloads__/${encodeURIComponent(contentType)}-${encodeURIComponent(contentId)}`
-  if (!('caches' in window)) return { storageKey: fileUrl, storedFileSize: 0, cached: false, remoteOnly: true }
+  if (!('caches' in window)) return { storageKey, storedFileSize: 0, cached: false }
 
-  try {
-    const response = await fetch(fileUrl, { mode: 'cors' })
-    if (!response.ok) throw new Error(`Download failed with status ${response.status}`)
-    const clone = response.clone()
-    const blob = await response.blob()
-    const cache = await caches.open(CACHE_NAME)
-    await cache.put(new Request(storageKey), clone)
-    return { storageKey, storedFileSize: blob.size || 0, cached: true }
-  } catch (err) {
-    return { storageKey: fileUrl, storedFileSize: 0, cached: false, remoteOnly: true, error: err.message }
-  }
+  const response = await fetch(fileUrl, { mode: 'cors' })
+  if (!response.ok) throw new Error(`Download failed with status ${response.status}`)
+  const clone = response.clone()
+  const blob = await response.blob()
+  const cache = await caches.open(CACHE_NAME)
+  await cache.put(new Request(storageKey), clone)
+  return { storageKey, storedFileSize: blob.size || 0, cached: true }
 }
 
 export function upsertLocalDownloadRecord({ download, contentType, contentId, storageKey, storedFileSize, snapshot = {} }) {
@@ -60,7 +56,6 @@ export function upsertLocalDownloadRecord({ download, contentType, contentId, st
     contentId: resolvedContentId,
     status: 'completed',
     storageKey,
-    remoteOnly: Boolean(snapshot.remoteOnly),
     storedFileSize: storedFileSize || snapshot.fileSize || download?.storedFileSize || 0,
     downloadedAt: download?.downloadedAt || new Date().toISOString(),
     contentSnapshot: snapshotFrom(download, {
@@ -89,12 +84,6 @@ export async function getLocalDownloads({ contentType } = {}) {
   const valid = []
   const validKeys = new Set()
   for (const item of items) {
-    if (item.remoteOnly || /^https?:\/\//i.test(item.storageKey || '')) {
-      validKeys.add(item.storageKey)
-      if (contentType && item.contentType !== contentType) continue
-      valid.push({ ...item, localOnly: true })
-      continue
-    }
     const match = await cache.match(cacheKey(item.storageKey))
     if (!match) continue
     validKeys.add(item.storageKey)

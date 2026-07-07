@@ -4,6 +4,7 @@ import { RiCheckLine, RiVipCrownFill, RiCalendarLine, RiCloseLine } from 'react-
 import toast from 'react-hot-toast'
 import { subscriptionService } from '../services/index'
 import useAuthStore from '../stores/authStore'
+import GoogleAdSlot from '../components/ads/GoogleAdSlot'
 
 const PLAN_COLORS = {
   mobile: '#60A5FA',
@@ -15,6 +16,13 @@ const PLAN_COLORS = {
 const PLAN_ICONS = {
   mobile: '📱', basic: '💻', standard: '⭐', premium: '👑'
 }
+
+const PAYMENT_GATEWAYS = [
+  { key: 'paystack', label: 'Paystack' },
+  { key: 'flutterwave', label: 'Flutterwave' },
+  { key: 'opay', label: 'OPay' },
+  { key: 'palmpay', label: 'PalmPay' },
+]
 
 export default function SubscriptionPage() {
   const navigate = useNavigate()
@@ -125,18 +133,20 @@ export default function SubscriptionPage() {
       {/* Gateway selector */}
       <div className="flex items-center justify-center gap-3 mb-8">
         <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Pay with:</span>
-        {['paystack', 'flutterwave'].map((gw) => (
-          <button key={gw} onClick={() => setGateway(gw)}
-            className="px-4 py-2 rounded-xl text-sm font-medium capitalize transition-all"
+        {PAYMENT_GATEWAYS.map((gw) => (
+          <button key={gw.key} onClick={() => setGateway(gw.key)}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
             style={{
-              background: gateway === gw ? 'var(--color-primary)' : 'var(--color-surface)',
-              color: gateway === gw ? 'white' : 'var(--color-text-muted)',
+              background: gateway === gw.key ? 'var(--color-primary)' : 'var(--color-surface)',
+              color: gateway === gw.key ? 'white' : 'var(--color-text-muted)',
               border: '1px solid var(--color-border)',
             }}>
-            {gw}
+            {gw.label}
           </button>
         ))}
       </div>
+
+      <GoogleAdSlot placement="subscription" className="mb-8" />
 
       {/* Plans grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

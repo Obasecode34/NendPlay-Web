@@ -7,10 +7,24 @@ import toast from 'react-hot-toast'
 import useAuthStore from '../stores/authStore'
 import { authService } from '../services/auth.service'
 import { mediaService, subscriptionService } from '../services/index'
+import { getContinueWatching } from '../services/continueWatching'
+import { clearWatchHistoryByDays, getWatchHistory } from '../services/watchHistory'
 import MediaCard from '../components/media/MediaCard'
 import UploadModal from '../components/media/UploadModal'
+import GoogleAdSlot from '../components/ads/GoogleAdSlot'
 
 const PROFILE_PAGE_LIMIT = 20
+const HISTORY_DELETE_OPTIONS = [
+  { value: '1', label: 'Last 1 day' },
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+  { value: 'all', label: 'All history' },
+]
+
+function isShortHistoryItem(item) {
+  return item?.type === 'short' || item?.type === 'shorts' || item?.isShort
+}
 
 export default function ProfilePage() {
   const navigate = useNavigate()
@@ -21,6 +35,9 @@ export default function ProfilePage() {
   const [uploadsHasMore, setUploadsHasMore] = useState(false)
   const [uploadsLoadingMore, setUploadsLoadingMore] = useState(false)
   const [savedMedia, setSavedMedia] = useState([])
+  const [continueWatching, setContinueWatching] = useState([])
+  const [watchHistory, setWatchHistory] = useState([])
+  const [historyDeleteDays, setHistoryDeleteDays] = useState('7')
   const [savedLoading, setSavedLoading] = useState(true)
   const [savedPage, setSavedPage] = useState(1)
   const [savedHasMore, setSavedHasMore] = useState(false)
@@ -59,7 +76,18 @@ export default function ProfilePage() {
     if (activeTab === 'saved' && isAuthenticated) {
       fetchSavedMedia(1, false)
     }
+    if (activeTab === 'continue') {
+      setContinueWatching(getContinueWatching())
+    }
+    if (activeTab === 'history') {
+      setWatchHistory(getWatchHistory())
+    }
   }, [activeTab, isAuthenticated])
+
+  useEffect(() => {
+    setContinueWatching(getContinueWatching())
+    setWatchHistory(getWatchHistory())
+  }, [])
 
   useEffect(() => {
     if (!loadMoreInView) return
@@ -208,6 +236,40 @@ export default function ProfilePage() {
     navigate('/home')
   }
 
+  const handleClearHistory = () => {
+    const remaining = clearWatchHistoryByDays(historyDeleteDays)
+    setWatchHistory(remaining)
+    toast.success(historyDeleteDays === 'all' ? 'Watch history deleted' : `Deleted watch history from the last ${historyDeleteDays} day${historyDeleteDays === '1' ? '' : 's'}`)
+  }
+
+  const renderHistoryGrid = (items, emptyText) => {
+    if (items.length === 0) {
+      return <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{emptyText}</p>
+    }
+    return (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {items.map((item) => (
+          <button
+            key={item._id}
+            type="button"
+            onClick={() => isShortHistoryItem(item) ? navigate(`/shorts?open=${item._id}`) : navigate(`/watch/${item._id}`)}
+            className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] text-left"
+          >
+            <div className="relative aspect-video bg-black/40">
+              {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt={item.title} className="h-full w-full object-cover" /> : null}
+            </div>
+            <div className="p-3">
+              <p className="line-clamp-2 text-sm font-bold" style={{ color: 'var(--color-text)' }}>{item.title}</p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                Watched {item.watchedAt ? new Date(item.watchedAt).toLocaleDateString() : ''}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+    )
+  }
+
   const planColors = {
     none: 'var(--color-text-muted)',
     mobile: '#60A5FA',
@@ -251,6 +313,62 @@ export default function ProfilePage() {
             style={{ background: 'var(--color-surface-high)', color: 'var(--color-text)' }}>
             <RiUserAddLine /> Create Account
           </button>
+        </div>
+
+        <GoogleAdSlot placement="profile" className="mt-6" />
+
+        <div className="card p-6 space-y-4 mt-6">
+          <h2 className="font-display font-bold text-lg" style={{ color: 'var(--color-text)' }}>Continue Watching</h2>
+          {continueWatching.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+              Start watching media and unfinished items will appear here.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {continueWatching.map((item) => (
+                <button
+                  key={item._id}
+                  type="button"
+                  onClick={() => navigate(`/watch/${item._id}`)}
+                  className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] text-left"
+                >
+                  <div className="relative aspect-video bg-black/40">
+                    {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt={item.title} className="h-full w-full object-cover" /> : null}
+                    <div className="absolute inset-x-2 bottom-2 h-1 rounded-full bg-white/25">
+                      <div className="h-full rounded-full bg-purple-500" style={{ width: `${Math.round((item.progress || 0) * 100)}%` }} />
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <p className="line-clamp-2 text-sm font-bold" style={{ color: 'var(--color-text)' }}>{item.title}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>{Math.round((item.progress || 0) * 100)}% watched</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card p-6 space-y-5 mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display font-bold text-lg" style={{ color: 'var(--color-text)' }}>Watch History</h2>
+              <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Completed movies and Shorts appear here.</p>
+            </div>
+            <div className="flex gap-2">
+              <select className="input-base py-2 text-sm" value={historyDeleteDays} onChange={(e) => setHistoryDeleteDays(e.target.value)}>
+                {HISTORY_DELETE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+              <button onClick={handleClearHistory} className="btn-ghost py-2 px-4 text-sm">Delete</button>
+            </div>
+          </div>
+          <section className="space-y-3">
+            <h3 className="font-display font-bold" style={{ color: 'var(--color-text)' }}>Movies</h3>
+            {renderHistoryGrid(watchHistory.filter((item) => !isShortHistoryItem(item)), 'No completed movies yet.')}
+          </section>
+          <section className="space-y-3">
+            <h3 className="font-display font-bold" style={{ color: 'var(--color-text)' }}>Shorts</h3>
+            {renderHistoryGrid(watchHistory.filter(isShortHistoryItem), 'No completed Shorts yet.')}
+          </section>
         </div>
 
         <div className="card p-6 space-y-4 mt-6">
@@ -381,6 +499,8 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      <GoogleAdSlot placement="profile" className="mb-6" />
+
       {/* Subscription info */}
       {subscription?.isActive && (
         <div className="card p-4 mb-6"
@@ -408,6 +528,8 @@ export default function ProfilePage() {
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         {[
+          { id: 'continue', label: 'Continue Watching' },
+          { id: 'history', label: 'Watch History' },
           { id: 'uploads', label: 'My Uploads' },
           { id: 'saved', label: 'Saved' },
           { id: 'security', label: 'Security' },
@@ -425,6 +547,85 @@ export default function ProfilePage() {
       </div>
 
       {/* Tab content */}
+      {activeTab === 'continue' && (
+        <div>
+          <div className="mb-4">
+            <p className="font-semibold" style={{ color: 'var(--color-text)' }}>
+              {continueWatching.length} unfinished item{continueWatching.length !== 1 ? 's' : ''}
+            </p>
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+              Media appears here automatically when you start watching and leave before finishing.
+            </p>
+          </div>
+
+          {continueWatching.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-xl mb-2" style={{ color: 'var(--color-text-muted)' }}>No unfinished media yet</p>
+              <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Start watching a movie or video and it will appear here.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {continueWatching.map((item) => (
+                <button
+                  key={item._id}
+                  type="button"
+                  onClick={() => navigate(`/watch/${item._id}`)}
+                  className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] text-left"
+                >
+                  <div className="relative aspect-video bg-black/40">
+                    {item.thumbnailUrl ? (
+                      <img src={item.thumbnailUrl} alt={item.title} className="h-full w-full object-cover" />
+                    ) : null}
+                    <div className="absolute inset-x-2 bottom-2 h-1 rounded-full bg-white/25">
+                      <div className="h-full rounded-full bg-purple-500" style={{ width: `${Math.round((item.progress || 0) * 100)}%` }} />
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <p className="line-clamp-2 text-sm font-bold" style={{ color: 'var(--color-text)' }}>{item.title}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      {Math.round((item.progress || 0) * 100)}% watched
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="space-y-6">
+          <div className="card p-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold" style={{ color: 'var(--color-text)' }}>
+                {watchHistory.length} completed item{watchHistory.length !== 1 ? 's' : ''}
+              </p>
+              <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                Delete recent watch history from Settings below.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <select className="input-base py-2 text-sm" value={historyDeleteDays} onChange={(e) => setHistoryDeleteDays(e.target.value)}>
+                {HISTORY_DELETE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+              <button onClick={handleClearHistory} className="btn-primary py-2 px-4 text-sm">
+                Delete
+              </button>
+            </div>
+          </div>
+
+          <section className="space-y-3">
+            <h2 className="font-display font-bold text-lg" style={{ color: 'var(--color-text)' }}>Movies</h2>
+            {renderHistoryGrid(watchHistory.filter((item) => !isShortHistoryItem(item)), 'No completed movies yet.')}
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-display font-bold text-lg" style={{ color: 'var(--color-text)' }}>Shorts</h2>
+            {renderHistoryGrid(watchHistory.filter(isShortHistoryItem), 'No completed Shorts yet.')}
+          </section>
+        </div>
+      )}
+
       {activeTab === 'uploads' && (
         <div>
           <div className="flex items-center justify-between mb-4">

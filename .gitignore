@@ -1,8 +1,8 @@
 node_modules/
 dist/
-dist-check/
 build/
 coverage/
+dist-check/
 *.log
 .env
 .env.local

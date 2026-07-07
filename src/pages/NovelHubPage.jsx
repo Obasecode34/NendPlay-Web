@@ -8,8 +8,10 @@ import { useInView } from 'react-intersection-observer'
 import toast from 'react-hot-toast'
 import { downloadService, novelService } from '../services/index'
 import { cacheDownloadFile, upsertLocalDownloadRecord } from '../services/localDownloads'
+import { getDeviceId } from '../services/guestSession'
 import useAuthStore from '../stores/authStore'
 import DownloadsPage from './DownloadsPage'
+import GoogleAdSlot from '../components/ads/GoogleAdSlot'
 
 const DOCUMENT_PAGE_LIMIT = 60
 
@@ -248,7 +250,7 @@ export default function NovelHubPage() {
     author: '', tags: '', licenseType: 'unknown',
     sourceName: '', sourceUrl: '', licenseUrl: '',
     attributionText: '', rightsSummary: '', requiresAttribution: false,
-    file: null, thumbnailFile: null,
+    file: null,
   })
 
   useEffect(() => { fetchDocuments(1, false) }, [search, genre])
@@ -298,7 +300,6 @@ export default function NovelHubPage() {
     try {
       const formData = new FormData()
       formData.append('document', uploadForm.file)
-      if (uploadForm.thumbnailFile) formData.append('thumbnail', uploadForm.thumbnailFile)
       formData.append('title', uploadForm.title)
       formData.append('description', uploadForm.description)
       formData.append('category', uploadForm.category)
@@ -320,7 +321,7 @@ export default function NovelHubPage() {
         author: '', tags: '', licenseType: 'unknown',
         sourceName: '', sourceUrl: '', licenseUrl: '',
         attributionText: '', rightsSummary: '', requiresAttribution: false,
-        file: null, thumbnailFile: null,
+        file: null,
       })
       fetchDocuments(1, false)
     } catch (err) {
@@ -342,8 +343,7 @@ export default function NovelHubPage() {
 
   const handleDownload = async (doc) => {
     try {
-      const deviceId = localStorage.getItem('nendplay-device-id') ||
-        (() => { const value = `device-${Date.now()}`; localStorage.setItem('nendplay-device-id', value); return value })()
+      const deviceId = getDeviceId()
       const res = await downloadService.authorize({
         contentType: 'document',
         contentId: doc._id,
@@ -365,7 +365,6 @@ export default function NovelHubPage() {
           category: doc.category || doc.genre || '',
           mimeType: doc.mimeType || res.data.data.mimeType || 'application/pdf',
           fileUrl,
-          remoteOnly: cachedFile.remoteOnly,
           licenseType: doc.licenseType || 'unknown',
           sourceName: doc.sourceName || '',
           sourceUrl: doc.sourceUrl || '',
@@ -377,7 +376,6 @@ export default function NovelHubPage() {
         try {
           await downloadService.complete({
             downloadId: res.data.data.download._id,
-            deviceId,
             storageKey: cachedFile.storageKey,
             storedFileSize: cachedFile.storedFileSize || doc.fileSize || 0,
           })
@@ -417,22 +415,14 @@ export default function NovelHubPage() {
   const renderCover = (doc, sizeClass = 'w-36') => {
     const [from, to] = getCoverColors(doc)
     const docGenre = genreByKey[getDocumentGenre(doc)] || PDF_GENRES[4]
-    const coverUrl = doc.thumbnailUrl || doc.coverImage || ''
     return (
       <button key={doc._id} onClick={() => setSelectedPdf(doc)} className={`${sizeClass} flex-shrink-0 text-left`}>
         <div
           className="relative flex aspect-[0.7] flex-col justify-between overflow-hidden rounded-xl border p-3"
           style={{ background: from, borderColor: 'var(--color-border)' }}
         >
-          {coverUrl ? (
-            <img src={coverUrl} alt={doc.title} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-          ) : (
-            <>
-              <div className="absolute inset-0 opacity-40" style={{ background: to }} />
-              <RiFileTextLine className="relative text-3xl text-white/80" />
-            </>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="absolute inset-0 opacity-40" style={{ background: to }} />
+          <RiFileTextLine className="relative text-3xl text-white/80" />
           <p className="relative text-center text-sm font-black text-white line-clamp-4">{doc.title}</p>
           <span className="relative self-start rounded-md bg-emerald-500/20 px-2 py-1 text-xs font-black text-emerald-300">
             {docGenre.label}
@@ -620,6 +610,8 @@ export default function NovelHubPage() {
         )}
       </div>
 
+      {activeTopTab === 'novels' && <GoogleAdSlot placement="novels" className="mb-6" />}
+
       {activeTopTab === 'downloads' ? (
         <DownloadsPage embedded contentType="document" />
       ) : activeTopTab === 'office' ? (
@@ -757,16 +749,6 @@ export default function NovelHubPage() {
                 </p>
                 <input id="doc-file" type="file" className="hidden" accept=".pdf,application/pdf"
                   onChange={(event) => setUploadForm({ ...uploadForm, file: event.target.files[0] })} />
-              </div>
-              <div className="cursor-pointer rounded-xl border-2 border-dashed p-4 text-center transition-colors"
-                style={{ borderColor: uploadForm.thumbnailFile ? 'var(--color-primary)' : 'var(--color-border)' }}
-                onClick={() => document.getElementById('doc-thumbnail').click()}>
-                <RiUploadLine className="mx-auto mb-2 text-2xl" style={{ color: 'var(--color-primary)' }} />
-                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                  {uploadForm.thumbnailFile ? uploadForm.thumbnailFile.name : 'Optional: select thumbnail cover'}
-                </p>
-                <input id="doc-thumbnail" type="file" className="hidden" accept="image/jpeg,image/png,image/webp"
-                  onChange={(event) => setUploadForm({ ...uploadForm, thumbnailFile: event.target.files[0] })} />
               </div>
               <div className="flex gap-3">
                 <button type="button" onClick={() => setShowUpload(false)} className="btn-ghost flex-1">Cancel</button>

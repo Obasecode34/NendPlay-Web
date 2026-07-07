@@ -23,6 +23,13 @@ const PLACEMENTS = [
   { value: 'all', label: 'Everywhere' },
 ]
 
+const PAYMENT_GATEWAYS = [
+  { key: 'paystack', label: 'Paystack' },
+  { key: 'flutterwave', label: 'Flutterwave' },
+  { key: 'opay', label: 'OPay' },
+  { key: 'palmpay', label: 'PalmPay' },
+]
+
 export default function AdvertisePage() {
   const { user } = useAuthStore()
   const [myAds, setMyAds] = useState([])
@@ -30,9 +37,7 @@ export default function AdvertisePage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [verifying, setVerifying] = useState(false)
-  const [paymentRef, setPaymentRef] = useState('')
-  const [paymentGateway, setPaymentGateway] = useState('paystack')
+  const [verifyingPayment, setVerifyingPayment] = useState(false)
   const [creativeFile, setCreativeFile] = useState(null)
   const [form, setForm] = useState({
     advertiserName: '', title: '', description: '',
@@ -41,15 +46,12 @@ export default function AdvertisePage() {
   })
   const isAdmin = ['admin', 'super_admin'].includes(user?.role)
 
-  useEffect(() => { fetchMyAds() }, [])
-
   useEffect(() => {
+    fetchMyAds()
     const params = new URLSearchParams(window.location.search)
     const ref = params.get('ref')
     const gateway = params.get('gateway')
     if (ref && gateway) {
-      setPaymentRef(ref)
-      setPaymentGateway(gateway)
       verifyPayment(ref, gateway)
       window.history.replaceState({}, '', window.location.pathname)
     }
@@ -83,43 +85,40 @@ export default function AdvertisePage() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      const payload = new FormData()
-      Object.entries(form).forEach(([key, value]) => payload.append(key, value ?? ''))
-      if (creativeFile) payload.append('creative', creativeFile)
+      let payload = form
+      if (creativeFile) {
+        payload = new FormData()
+        Object.entries(form).forEach(([key, value]) => payload.append(key, String(value ?? '')))
+        payload.append('creative', creativeFile)
+      }
       if (isAdmin) {
         await adminService.createAd(payload)
         toast.success('Free admin ad created')
       } else {
         const res = await adService.submit(payload)
-        const { paymentUrl, transactionRef } = res.data?.data || {}
+        const { paymentUrl } = res.data?.data || {}
         if (!paymentUrl) throw new Error('Payment link was not returned')
-        setPaymentRef(transactionRef)
-        setPaymentGateway(form.gateway)
         toast.success('Ad submitted. Redirecting to payment.')
         window.location.assign(paymentUrl)
       }
       setShowForm(false)
+      setCreativeFile(null)
       fetchMyAds()
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Submission failed')
     } finally { setSubmitting(false) }
   }
 
-  const verifyPayment = async (ref = paymentRef, gateway = paymentGateway) => {
-    if (!ref || !gateway) {
-      toast.error('Payment reference and gateway are required')
-      return
-    }
-    setVerifying(true)
+  const verifyPayment = async (transactionRef, gateway) => {
+    setVerifyingPayment(true)
     try {
-      const res = await adService.verify({ transactionRef: ref.trim(), gateway })
-      toast.success(res.data.message || 'Payment verified')
-      setPaymentRef('')
+      const res = await adService.verify({ transactionRef, gateway })
+      toast.success(res.data?.message || 'Ad payment confirmed. Pending admin review.')
       fetchMyAds()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Payment verification failed')
+      toast.error(err.response?.data?.message || 'Could not verify ad payment')
     } finally {
-      setVerifying(false)
+      setVerifyingPayment(false)
     }
   }
 
@@ -147,21 +146,13 @@ export default function AdvertisePage() {
           </p>
         </div>
         <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
-          <RiMegaphoneFill /> Create Ad
+          <RiMegaphoneFill /> {isAdmin ? 'Create Free Ad' : 'Create Ad'}
         </button>
       </div>
 
-      {paymentRef && (
-        <div className="card p-4 mb-5 flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
-          <div>
-            <p className="font-semibold" style={{ color: 'var(--color-text)' }}>Payment verification pending</p>
-            <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-              Reference: {paymentRef}
-            </p>
-          </div>
-          <button onClick={() => verifyPayment()} disabled={verifying} className="btn-primary">
-            {verifying ? 'Verifying...' : 'I have paid'}
-          </button>
+      {verifyingPayment && (
+        <div className="card p-4 mb-5 text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
+          Verifying ad payment...
         </div>
       )}
 
@@ -180,7 +171,7 @@ export default function AdvertisePage() {
             Create your first ad to reach NendPlay users
           </p>
           <button onClick={() => setShowForm(true)} className="btn-primary">
-            Create Ad
+            {isAdmin ? 'Create Free Ad' : 'Create Ad'}
           </button>
         </div>
       ) : (
@@ -199,8 +190,8 @@ export default function AdvertisePage() {
                 </div>
                 <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--color-text-muted)' }}>
                   <span className="capitalize">{ad.adType} · {ad.placement}</span>
-                  <span>{ad.impressions} views</span>
-                  <span>{ad.clicks} clicks</span>
+                  <span>👁 {ad.impressions}</span>
+                  <span>🖱 {ad.clicks}</span>
                   {ad.expiryDate && (
                     <span>Expires {new Date(ad.expiryDate).toLocaleDateString()}</span>
                   )}
@@ -227,7 +218,7 @@ export default function AdvertisePage() {
             style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
 
             <h2 className="font-display font-bold text-xl mb-4" style={{ color: 'var(--color-text)' }}>
-              Create Ad
+              {isAdmin ? 'Create Free Admin Ad' : 'Create Ad'}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -243,17 +234,25 @@ export default function AdvertisePage() {
               <input type="url" placeholder="Target URL (where clicks go)" value={form.targetUrl}
                 onChange={(e) => setForm({ ...form, targetUrl: e.target.value })}
                 className="input-base" />
-              <input type="url" placeholder="Ad media URL (optional if uploading a file)" value={form.mediaUrl}
+              <input type="url" placeholder="Ad media URL (image or video)" value={form.mediaUrl}
                 onChange={(e) => setForm({ ...form, mediaUrl: e.target.value })}
                 className="input-base" />
-              <input type="file" accept="image/*,video/*"
-                onChange={(e) => setCreativeFile(e.target.files?.[0] || null)}
-                className="input-base" />
-              {creativeFile && (
-                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                  Creative selected: {creativeFile.name}
-                </p>
-              )}
+              <div>
+                <label className="block text-xs mb-1" style={{ color: 'var(--color-text-muted)' }}>
+                  Upload creative image/video
+                </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
+                  onChange={(e) => setCreativeFile(e.target.files?.[0] || null)}
+                  className="input-base"
+                />
+                {creativeFile && (
+                  <button type="button" className="btn-ghost mt-2 px-3 py-1 text-xs" onClick={() => setCreativeFile(null)}>
+                    Remove selected file
+                  </button>
+                )}
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -291,6 +290,19 @@ export default function AdvertisePage() {
                   className="w-full" style={{ accentColor: 'var(--color-primary)' }} />
               </div>
 
+              {isAdmin && (
+                <div
+                  className="p-3 rounded-xl text-sm font-bold"
+                  style={{
+                    background: 'rgba(34,197,94,0.12)',
+                    color: '#22C55E',
+                    border: '1px solid rgba(34,197,94,0.28)',
+                  }}
+                >
+                  Payment: Free admin ad. No Paystack or Flutterwave payment is required.
+                </div>
+              )}
+
               {/* Price quote */}
               {!isAdmin && quote && (
                 <div className="p-3 rounded-xl" style={{ background: 'var(--color-surface-high)' }}>
@@ -303,21 +315,16 @@ export default function AdvertisePage() {
                 </div>
               )}
 
-              {isAdmin ? (
-                <div className="p-3 rounded-xl text-xs font-semibold"
-                  style={{ background: 'var(--color-surface-high)', color: 'var(--color-primary)' }}>
-                  Payment: Free admin ad. No Paystack or Flutterwave payment is required.
-                </div>
-              ) : (
+              {!isAdmin && (
                 <div className="grid grid-cols-2 gap-3">
-                  {['paystack', 'flutterwave'].map((gw) => (
-                    <button key={gw} type="button" onClick={() => setForm({ ...form, gateway: gw })}
-                      className="py-2 rounded-xl text-sm capitalize transition-all"
+                  {PAYMENT_GATEWAYS.map((gw) => (
+                    <button key={gw.key} type="button" onClick={() => setForm({ ...form, gateway: gw.key })}
+                      className="py-2 rounded-xl text-sm transition-all"
                       style={{
-                        background: form.gateway === gw ? 'var(--color-primary)' : 'var(--color-surface-high)',
-                        color: form.gateway === gw ? 'white' : 'var(--color-text-muted)',
+                        background: form.gateway === gw.key ? 'var(--color-primary)' : 'var(--color-surface-high)',
+                        color: form.gateway === gw.key ? 'white' : 'var(--color-text-muted)',
                       }}>
-                      {gw}
+                      {gw.label}
                     </button>
                   ))}
                 </div>

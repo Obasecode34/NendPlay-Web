@@ -8,8 +8,10 @@ import { useInView } from 'react-intersection-observer'
 import toast from 'react-hot-toast'
 import { mediaService, downloadService } from '../services/index'
 import { cacheDownloadFile, upsertLocalDownloadRecord } from '../services/localDownloads'
-import NendPlayAdSlot from '../components/ads/NendPlayAdSlot'
+import { getDeviceId } from '../services/guestSession'
+import { addWatchHistory } from '../services/watchHistory'
 import GoogleAdSlot from '../components/ads/GoogleAdSlot'
+import NendPlayAdSlot from '../components/ads/NendPlayAdSlot'
 
 function formatCount(value = 0) {
   const count = Number(value) || 0
@@ -80,7 +82,7 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
   const handleDownload = async (e) => {
     e.stopPropagation()
     try {
-      const deviceId = window.navigator.userAgent.slice(0, 64)
+      const deviceId = getDeviceId()
       const res = await downloadService.authorize({
         contentType: 'media',
         contentId: short._id,
@@ -91,7 +93,7 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
         toast.success('Already downloaded')
         return
       }
-      const fileUrl = res.data.data.fileUrl || mediaService.resolveStreamUrl(mediaService.getStreamUrl(short._id))
+      const fileUrl = mediaService.resolveStreamUrl(mediaService.getStreamUrl(short._id)) || res.data.data.fileUrl
       const cachedFile = await cacheDownloadFile({
         fileUrl,
         contentType: 'media',
@@ -111,7 +113,6 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
           duration: short.duration || 0,
           mimeType: short.mimeType || res.data.data.mimeType || '',
           fileUrl,
-          remoteOnly: cachedFile.remoteOnly,
         },
       })
       if (res.data.data.download?._id) {
@@ -211,7 +212,10 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
         muted
         playsinline
         loop={false}
-        onEnded={onEnded}
+        onEnded={() => {
+          addWatchHistory(short, { duration: short.duration })
+          onEnded?.()
+        }}
         width="100%"
         height="100%"
         style={{ objectFit: 'cover' }}
@@ -389,12 +393,9 @@ function ShortsAdCard({ adItem, isActive, onActivate, onEnded }) {
       className="relative flex-shrink-0 overflow-hidden rounded-2xl p-4 shadow-2xl"
       style={shortFrameStyle}
     >
-      <div className="flex h-full w-full items-center justify-center">
-        {adItem.adType === 'google' ? (
-          <GoogleAdSlot className="w-full" />
-        ) : (
-          <NendPlayAdSlot placement="shorts" className="w-full" />
-        )}
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3">
+        <GoogleAdSlot placement="shorts" className="w-full" />
+        <NendPlayAdSlot placement="shorts" className="w-full" />
       </div>
     </div>
   )
@@ -412,18 +413,9 @@ export default function ShortsPage() {
   const openShortId = searchParams.get('open')
   const feedItems = useMemo(() => {
     const items = []
-    const adTypes = ['nendplay', 'google']
     shorts.forEach((short, index) => {
+      if (index > 0 && index % 5 === 0) items.push({ _id: `shorts-ad-${index}`, isAd: true })
       items.push(short)
-      const playedCount = index + 1
-      if (playedCount % 5 === 0) {
-        const adNumber = playedCount / 5
-        items.push({
-          _id: `shorts-ad-${playedCount}`,
-          isAd: true,
-          adType: adTypes[(adNumber - 1) % adTypes.length],
-        })
-      }
     })
     return items
   }, [shorts])
@@ -514,7 +506,7 @@ export default function ShortsPage() {
 
   if (loading && page === 1) {
     return (
-      <div className="mx-auto flex w-full flex-col items-center space-y-4">
+      <div className="mx-auto flex w-full flex-col items-center space-y-4 shorts-loading-skeleton">
         {[...Array(3)].map((_, i) => (
           <div
             key={i}
