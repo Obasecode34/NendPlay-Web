@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
-  RiArrowLeftLine, RiBookmarkLine, RiBookOpenLine, RiCalendarLine, RiChat3Line,
-  RiCheckboxCircleFill, RiHeadphoneLine, RiHeartLine, RiMore2Fill, RiPlayFill,
-  RiSearchLine, RiSendPlaneFill, RiShareForwardLine, RiTimeLine,
+  RiArrowLeftLine, RiBookmarkLine, RiBookOpenLine, RiBriefcase4Line, RiCalendarLine,
+  RiChat3Line, RiCheckboxCircleFill, RiHeadphoneLine, RiHeartLine, RiMapPin2Line,
+  RiMoneyDollarCircleLine, RiMore2Fill, RiPlayFill, RiSearchLine, RiSendPlaneFill,
+  RiShareForwardLine, RiTeamLine, RiTimeLine,
 } from 'react-icons/ri'
 import ReactPlayer from 'react-player'
 import { newsService } from '../services'
@@ -38,6 +39,29 @@ function estimateReadTime(text) {
 function getCategory(post) {
   const value = post?.categories?.[0] || post?.category || post?.section || 'News'
   return String(value).replace(/[-_]/g, ' ')
+}
+
+function getJobRequirements(post = {}) {
+  const lines = String(post.body || '')
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+    .filter(Boolean)
+  if (lines.length) return lines
+  return [post.subHeader || 'Relevant experience and strong communication skills required.']
+}
+
+function getJobMeta(post = {}) {
+  return {
+    company: post.company || post.source || 'NendPlay Media',
+    tagline: post.tagline || 'Empowering Jobs. Inspiring Futures.',
+    title: post.header || post.title || 'Job Position / Title',
+    location: post.location || post.jobLocation || 'Lagos, Nigeria',
+    salary: post.salary || post.salaryRange || 'Salary disclosed during application',
+    experience: post.experience || post.yearsExperience || post.subHeader || '2 - 4 years',
+    deadline: formatDate(post.deadline || post.applicationDeadline || post.publishedAt || post.createdAt),
+    appliedCount: post.appliedCount || post.applicationCount || 120,
+    requirements: getJobRequirements(post),
+  }
 }
 
 function isQuoteParagraph(text) {
@@ -193,6 +217,152 @@ export default function NewsArticlePage() {
   const remainingVideos = videos.slice(1)
   const remainingImages = images.slice(heroImage ? 1 : 0)
   const readTime = estimateReadTime(post.body)
+
+  if (post.section === 'career') {
+    const job = getJobMeta(post)
+
+    return (
+      <div className="mx-auto max-w-5xl animate-fade-in pb-24">
+        <article className="overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-purple-950/10 ring-1 ring-purple-100">
+          <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4 md:px-8">
+            <button type="button" onClick={() => navigate(-1)} className="grid h-11 w-11 place-items-center rounded-full text-slate-950 hover:bg-slate-100">
+              <RiArrowLeftLine size={26} />
+            </button>
+            <h1 className="text-xl font-black text-slate-950 md:text-3xl">
+              <span className="text-purple-700">NendPlay</span> Career
+            </h1>
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => toast.success('Saved for later')} className="grid h-11 w-11 place-items-center rounded-full text-slate-950 hover:bg-slate-100">
+                <RiBookmarkLine size={24} />
+              </button>
+              <button type="button" onClick={sharePost} className="grid h-11 w-11 place-items-center rounded-full text-slate-950 hover:bg-slate-100">
+                <RiShareForwardLine size={24} />
+              </button>
+            </div>
+          </header>
+
+          <div className="px-5 py-7 md:px-10 md:py-9">
+            <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+              <div className="flex items-center gap-5">
+                <div className="grid h-24 w-24 place-items-center rounded-full border border-purple-100 bg-white shadow-inner">
+                  <div className="text-center">
+                    <p className="text-5xl font-black text-purple-700">N</p>
+                    <p className="text-sm font-black text-purple-700">NendPlay</p>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-black text-slate-950">{job.company}</p>
+                    <RiCheckboxCircleFill className="text-2xl text-purple-700" />
+                  </div>
+                  <p className="mt-1 text-lg font-semibold text-slate-600">{job.tagline}</p>
+                </div>
+              </div>
+              <span className="w-fit rounded-xl bg-purple-700 px-5 py-2 text-lg font-black text-white">New</span>
+            </div>
+
+            <h2 className="mt-10 border-b border-slate-200 pb-8 text-5xl font-black leading-tight tracking-tight text-slate-950 md:text-7xl">
+              {job.title}
+            </h2>
+
+            <div className="mt-8 grid gap-5">
+              <div className="grid gap-5 md:grid-cols-2">
+                <div className="flex items-center gap-5">
+                  <span className="grid h-16 w-16 place-items-center rounded-2xl bg-purple-50 text-purple-700">
+                    <RiMapPin2Line size={34} />
+                  </span>
+                  <div className="grid gap-1 md:grid-cols-[160px_1fr]">
+                    <p className="text-xl font-black">Location</p>
+                    <p className="text-xl font-semibold text-slate-700">{job.location}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-5">
+                  <span className="grid h-16 w-16 place-items-center rounded-2xl bg-purple-50 text-purple-700">
+                    <RiMoneyDollarCircleLine size={34} />
+                  </span>
+                  <div className="grid gap-1 md:grid-cols-[120px_1fr]">
+                    <p className="text-xl font-black">Salary</p>
+                    <p className="text-xl font-semibold text-purple-700">{job.salary}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-8 rounded-2xl border border-purple-100 bg-purple-50/70 px-6 py-5 text-xl font-semibold text-slate-900">
+                <span className="inline-flex items-center gap-3"><RiBriefcase4Line className="text-purple-700" /> {job.experience}</span>
+                <span className="text-3xl font-black text-purple-700">//</span>
+                <span className="inline-flex items-center gap-3"><RiCalendarLine className="text-purple-700" /> {job.deadline}</span>
+              </div>
+            </div>
+
+            <div className="mt-9 border-t border-slate-100 pt-8">
+              <div className="mb-5 flex items-center gap-4">
+                <span className="grid h-14 w-14 place-items-center rounded-2xl bg-purple-50 text-purple-700">
+                  <RiBookOpenLine size={28} />
+                </span>
+                <h3 className="text-2xl font-black text-purple-700">Requirements</h3>
+              </div>
+              <ul className="space-y-4 text-xl leading-8 text-slate-900">
+                {job.requirements.map((requirement, index) => (
+                  <li key={`${requirement}-${index}`} className="flex gap-4">
+                    <span className="mt-3 h-2 w-2 shrink-0 rounded-full bg-purple-700" />
+                    <span>{requirement}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-9 flex items-center gap-5 rounded-2xl border border-dashed border-purple-400 bg-purple-50/50 p-6">
+              <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-purple-700 text-white">
+                <RiCheckboxCircleFill size={34} />
+              </span>
+              <div>
+                <p className="text-xl font-black text-slate-950">Be part of a growing team making impact every day.</p>
+                <p className="mt-1 text-lg text-slate-700">Apply now and take the next step in your career.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 bg-purple-50/50 p-5 md:grid-cols-[1fr_1fr] md:p-8">
+            <div className="inline-flex items-center justify-center gap-3 rounded-2xl border border-purple-100 bg-white px-6 py-5 text-xl font-bold text-purple-700">
+              <RiTeamLine size={30} /> {job.appliedCount}+ people applied
+            </div>
+            <button type="button" onClick={sharePost} className="inline-flex items-center justify-center gap-3 rounded-2xl bg-purple-700 px-6 py-5 text-2xl font-black text-white shadow-xl shadow-purple-700/25">
+              <RiSendPlaneFill /> Apply Now
+            </button>
+          </div>
+        </article>
+
+        <section className="mt-8 rounded-[2rem] bg-white p-5 shadow-xl shadow-black/5 ring-1 ring-black/5 md:p-8">
+          <h2 className="mb-4 text-2xl font-black text-slate-950">Comments</h2>
+          <form onSubmit={submitComment} className="mb-5 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            {replyTarget && (
+              <div className="mb-3 flex items-center justify-between rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-500">
+                Replying to {replyTarget.user?.profileName || replyTarget.user?.username || 'comment'}
+                <button type="button" onClick={() => setReplyTarget(null)}>Cancel</button>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <input
+                className="input-base flex-1"
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                placeholder={replyTarget ? 'Write a reply...' : "Let's talk about it"}
+              />
+              <button type="submit" className="btn-primary px-4"><RiSendPlaneFill /></button>
+            </div>
+          </form>
+
+          <div className="space-y-4">
+            {(post.comments || []).length === 0 ? (
+              <p className="text-center text-sm text-slate-500">No comments yet.</p>
+            ) : post.comments.map((item) => (
+              <Comment key={item._id} item={item} onReply={setReplyTarget} onLike={likeComment} />
+            ))}
+          </div>
+        </section>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-5xl animate-fade-in pb-24">

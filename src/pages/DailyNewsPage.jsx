@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   RiArrowRightLine, RiBookmarkLine, RiCalendarLine,
-  RiGlobalLine, RiSearchLine, RiTimeLine,
+  RiBriefcase4Line, RiCheckboxCircleFill, RiGlobalLine, RiMapPin2Line,
+  RiMoneyDollarCircleLine, RiSearchLine, RiTeamLine, RiTimeLine,
 } from 'react-icons/ri'
 import { newsService } from '../services'
 import { InArticleAd, MultiplexAd } from '../components/ads/GoogleAdSlot'
@@ -74,6 +75,38 @@ function getArticleCategory(article = {}) {
   return String(value || article.section || 'News').replace(/-/g, ' ')
 }
 
+function formatCategoryLabel(value) {
+  return String(value || '')
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function getJobRequirements(article = {}) {
+  const lines = String(article.body || '')
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+    .filter(Boolean)
+  if (lines.length) return lines.slice(0, 4)
+  const fallback = article.subHeader || article.summary || 'Relevant experience and strong communication skills required.'
+  return [fallback]
+}
+
+function getJobMeta(article = {}) {
+  const deadlineValue = article.deadline || article.applicationDeadline || article.publishedAt || article.createdAt
+  return {
+    company: article.company || article.source || 'NendPlay Media',
+    tagline: article.tagline || 'Empowering Jobs. Inspiring Futures.',
+    title: article.header || article.title || 'Job Position / Title',
+    location: article.location || article.jobLocation || 'Lagos, Nigeria',
+    salary: article.salary || article.salaryRange || 'Salary disclosed during application',
+    experience: article.experience || article.yearsExperience || article.subHeader || '2 - 4 years',
+    deadline: formatDate(deadlineValue),
+    category: formatCategoryLabel(getArticleCategory(article)),
+    requirements: getJobRequirements(article),
+    appliedCount: article.appliedCount || article.applicationCount || 120,
+  }
+}
+
 function NewsCard({ article, featured = false, onOpen }) {
   const imageUrl = article.imageUrl || article.coverImage || article.thumbnailUrl
   const title = article.header || article.title || 'Untitled story'
@@ -142,6 +175,97 @@ function NewsCard({ article, featured = false, onOpen }) {
             <RiBookmarkLine className="text-xl" />
           </button>
         </div>
+      </div>
+    </article>
+  )
+}
+
+function JobCard({ article, onOpen }) {
+  const job = getJobMeta(article)
+
+  return (
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(article)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') onOpen(article)
+      }}
+      className="group cursor-pointer rounded-[1.75rem] bg-white p-5 text-slate-950 shadow-[0_18px_48px_rgba(88,28,135,0.16)] ring-1 ring-purple-100 transition-transform hover:-translate-y-1 md:p-6"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-purple-100 bg-white">
+            <span className="text-3xl font-black text-purple-700">N</span>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="truncate text-lg font-black">{job.company}</p>
+              <RiCheckboxCircleFill className="shrink-0 text-purple-700" />
+            </div>
+            <p className="line-clamp-1 text-sm font-semibold text-slate-500">{job.tagline}</p>
+          </div>
+        </div>
+        <span className="rounded-xl bg-purple-700 px-3 py-1.5 text-sm font-black text-white">New</span>
+      </div>
+
+      <h2 className="mt-6 line-clamp-2 text-3xl font-black leading-tight tracking-tight md:text-4xl">
+        {job.title}
+      </h2>
+
+      <div className="mt-5 space-y-4 border-t border-slate-200 pt-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-purple-50 text-purple-700">
+              <RiMapPin2Line size={24} />
+            </span>
+            <div>
+              <p className="text-sm font-black">Location</p>
+              <p className="text-sm font-semibold text-slate-600">{job.location}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-purple-50 text-purple-700">
+              <RiMoneyDollarCircleLine size={24} />
+            </span>
+            <div>
+              <p className="text-sm font-black">Salary</p>
+              <p className="text-sm font-semibold text-purple-700">{job.salary}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-purple-100 bg-purple-50/60 px-4 py-3 text-sm font-bold text-slate-800">
+          <span className="inline-flex items-center gap-2"><RiBriefcase4Line className="text-purple-700" /> {job.experience}</span>
+          <span className="text-purple-700">//</span>
+          <span className="inline-flex items-center gap-2"><RiCalendarLine className="text-purple-700" /> {job.deadline}</span>
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm font-black text-purple-700">Requirements</p>
+          <ul className="space-y-2 text-sm font-medium text-slate-700">
+            {job.requirements.slice(0, 3).map((requirement, index) => (
+              <li key={`${requirement}-${index}`} className="flex gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-purple-700" />
+                <span className="line-clamp-1">{requirement}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="rounded-2xl border border-dashed border-purple-300 bg-purple-50/50 p-4">
+          <p className="font-black">Be part of a growing team making impact every day.</p>
+          <p className="mt-1 text-sm text-slate-600">Apply now and take the next step in your career.</p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="inline-flex items-center justify-center gap-2 rounded-2xl border border-purple-100 bg-white px-4 py-3 text-sm font-bold text-purple-700">
+          <RiTeamLine size={20} /> {job.appliedCount}+ people applied
+        </div>
+        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-purple-700 px-4 py-3 text-sm font-black text-white">
+          Apply Now <RiArrowRightLine size={20} />
+        </button>
       </div>
     </article>
   )
@@ -344,11 +468,19 @@ export default function DailyNewsPage() {
         </div>
       ) : (
         <>
-          {featured && <div className="mb-4"><NewsCard article={featured} featured onOpen={openArticle} /></div>}
+          {featured && (
+            <div className="mb-4">
+              {activeSection === 'career'
+                ? <JobCard article={featured} onOpen={openArticle} />
+                : <NewsCard article={featured} featured onOpen={openArticle} />}
+            </div>
+          )}
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {rest.map((article, index) => (
               <React.Fragment key={article._id || article.id || index}>
-                <NewsCard article={article} onOpen={openArticle} />
+                {activeSection === 'career'
+                  ? <JobCard article={article} onOpen={openArticle} />
+                  : <NewsCard article={article} onOpen={openArticle} />}
                 {(index + (featured ? 2 : 1)) % 4 === 0 && (
                   <div className="md:col-span-2 xl:col-span-3">
                     <InArticleAd placement={feedAdPlacement} />
