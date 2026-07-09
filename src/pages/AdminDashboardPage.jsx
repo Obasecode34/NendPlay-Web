@@ -5,16 +5,23 @@ import toast from 'react-hot-toast'
 import {
   RiAdvertisementLine,
   RiBookOpenLine,
+  RiBriefcase4Line,
+  RiCalendarLine,
+  RiCheckboxCircleFill,
   RiDashboardLine,
   RiDownloadLine,
   RiDeleteBinLine,
   RiEyeLine,
   RiFilmLine,
   RiGiftLine,
+  RiMapPin2Line,
   RiMailLine,
+  RiMoneyDollarCircleLine,
   RiNewspaperLine,
   RiNotification3Line,
+  RiShareForwardLine,
   RiShieldUserLine,
+  RiTeamLine,
   RiUserLine,
   RiVipCrownLine,
 } from 'react-icons/ri'
@@ -119,6 +126,11 @@ const CAREER_CATEGORY_OPTIONS = [
   'Social Services', 'Sports', 'Transportation', 'Hospitality & Tourism',
   'Skilled Trades', 'Environmental Services', 'Virtual Assistance',
 ].map((label) => ({ value: label.toLowerCase(), label }))
+
+const JOB_TYPE_OPTIONS = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Temporary']
+const JOB_LEVEL_OPTIONS = ['Entry-Level', 'Mid-Level', 'Senior-Level', 'Manager', 'Director']
+const JOB_URGENCY_OPTIONS = ['Normal', 'Urgent', 'Featured']
+const DEFAULT_JOB_BENEFITS = ['Health Insurance', 'Remote Work', 'Paid Leave', 'Career Growth', 'Pension Plan']
 
 function listToInput(value) {
   return Array.isArray(value) ? value.join(', ') : value || ''
@@ -1812,19 +1824,24 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
     subHeader: '',
     body: '',
     categories: ['headlines'],
+    company: 'NendPlay Media',
+    tagline: 'Empowering Jobs. Inspiring Futures.',
+    location: 'Lagos, Nigeria',
+    salary: '',
+    experience: '2 - 4 years',
+    deadline: '',
+    jobType: 'Full-time',
+    level: 'Mid-Level',
+    urgency: 'Urgent',
+    applyEmail: 'careers@nendplaymedia.com',
+    applyUrl: 'https://nendplay.com/careers',
+    responsibilities: '',
+    requirements: '',
+    benefits: DEFAULT_JOB_BENEFITS.join(', '),
     adsEnabled: true,
     status: 'published',
   }
-  const [postForm, setPostForm] = useState({
-    section: 'news',
-    jobMode: 'on-site',
-    header: '',
-    subHeader: '',
-    body: '',
-    categories: ['headlines'],
-    adsEnabled: true,
-    status: 'published',
-  })
+  const [postForm, setPostForm] = useState(emptyPostForm)
   const [postFiles, setPostFiles] = useState([])
   const [posting, setPosting] = useState(false)
   const [editingPost, setEditingPost] = useState(null)
@@ -1869,6 +1886,20 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
       body: article.body || article.summary || '',
       categories: (article.categories?.length ? article.categories : [article.category || 'headlines'])
         .map((item) => String(item).toLowerCase()),
+      company: article.company || article.source || 'NendPlay Media',
+      tagline: article.tagline || 'Empowering Jobs. Inspiring Futures.',
+      location: article.location || 'Lagos, Nigeria',
+      salary: article.salary || '',
+      experience: article.experience || '2 - 4 years',
+      deadline: article.deadline ? new Date(article.deadline).toISOString().slice(0, 10) : '',
+      jobType: article.jobType || 'Full-time',
+      level: article.level || 'Mid-Level',
+      urgency: article.urgency || 'Urgent',
+      applyEmail: article.applyEmail || 'careers@nendplaymedia.com',
+      applyUrl: article.applyUrl || 'https://nendplay.com/careers',
+      responsibilities: listToInput(article.responsibilities),
+      requirements: listToInput(article.requirements),
+      benefits: listToInput(article.benefits?.length ? article.benefits : DEFAULT_JOB_BENEFITS),
       adsEnabled: article.adsEnabled !== false,
       status: article.status || 'published',
     })
@@ -1885,6 +1916,24 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
       toast.error('Choose at least one category')
       return
     }
+    if (postForm.section === 'career') {
+      if (!postForm.company.trim() || !postForm.location.trim() || !postForm.salary.trim()) {
+        toast.error('Company, location, and salary are required for jobs')
+        return
+      }
+      if (!postForm.experience.trim() || !postForm.deadline) {
+        toast.error('Experience and application deadline are required for jobs')
+        return
+      }
+      if (!postForm.applyEmail.trim() && !postForm.applyUrl.trim()) {
+        toast.error('Add an application email or application link')
+        return
+      }
+      if (!postForm.requirements.trim() || !postForm.responsibilities.trim()) {
+        toast.error('Add job requirements and responsibilities')
+        return
+      }
+    }
     if (selectedFileStats.videos > 5 || selectedFileStats.audio > 5 || selectedFileStats.pictures > 5) {
       toast.error('Choose up to 5 videos, 5 audio files, and 5 pictures')
       return
@@ -1899,6 +1948,24 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
     data.append('categories', postForm.categories.join(','))
     data.append('adsEnabled', String(postForm.adsEnabled))
     data.append('status', postForm.status)
+    if (postForm.section === 'career') {
+      ;[
+        'company',
+        'tagline',
+        'location',
+        'salary',
+        'experience',
+        'deadline',
+        'jobType',
+        'level',
+        'urgency',
+        'applyEmail',
+        'applyUrl',
+        'responsibilities',
+        'requirements',
+        'benefits',
+      ].forEach((key) => data.append(key, postForm[key] || ''))
+    }
     postFiles.forEach((file) => data.append('media', file))
 
     setPosting(true)
@@ -2010,23 +2077,180 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
         <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <input
             className="input-base"
-            placeholder="Header"
+            placeholder={postForm.section === 'career' ? 'Job title / position' : 'Header'}
             value={postForm.header}
             onChange={(event) => setPostForm({ ...postForm, header: event.target.value })}
           />
           <input
             className="input-base"
-            placeholder="Sub-header"
+            placeholder={postForm.section === 'career' ? 'Short job summary' : 'Sub-header'}
             value={postForm.subHeader}
             onChange={(event) => setPostForm({ ...postForm, subHeader: event.target.value })}
           />
           <textarea
             className="input-base lg:col-span-2 min-h-[160px]"
-            placeholder="Body text. Ads will be displayed between paragraphs where available."
+            placeholder={postForm.section === 'career'
+              ? 'Detailed job summary or notes. Ads can be displayed between paragraphs where available.'
+              : 'Body text. Ads will be displayed between paragraphs where available.'}
             value={postForm.body}
             onChange={(event) => setPostForm({ ...postForm, body: event.target.value })}
           />
         </div>
+
+        {postForm.section === 'career' && (
+          <div className="mt-5 grid grid-cols-1 xl:grid-cols-[1.15fr_.85fr] gap-4">
+            <div className="rounded-3xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--color-border)' }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  className="input-base"
+                  placeholder="Company name"
+                  value={postForm.company}
+                  onChange={(event) => setPostForm({ ...postForm, company: event.target.value })}
+                />
+                <input
+                  className="input-base"
+                  placeholder="Company tagline"
+                  value={postForm.tagline}
+                  onChange={(event) => setPostForm({ ...postForm, tagline: event.target.value })}
+                />
+                <input
+                  className="input-base"
+                  placeholder="Location, e.g. Lagos, Nigeria"
+                  value={postForm.location}
+                  onChange={(event) => setPostForm({ ...postForm, location: event.target.value })}
+                />
+                <input
+                  className="input-base"
+                  placeholder="Salary, e.g. ₦350,000 - ₦500,000 / month"
+                  value={postForm.salary}
+                  onChange={(event) => setPostForm({ ...postForm, salary: event.target.value })}
+                />
+                <input
+                  className="input-base"
+                  placeholder="Experience, e.g. 2 - 4 years"
+                  value={postForm.experience}
+                  onChange={(event) => setPostForm({ ...postForm, experience: event.target.value })}
+                />
+                <input
+                  className="input-base"
+                  type="date"
+                  value={postForm.deadline}
+                  onChange={(event) => setPostForm({ ...postForm, deadline: event.target.value })}
+                />
+                <select
+                  className="input-base"
+                  value={postForm.jobType}
+                  onChange={(event) => setPostForm({ ...postForm, jobType: event.target.value })}
+                >
+                  {JOB_TYPE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                <select
+                  className="input-base"
+                  value={postForm.level}
+                  onChange={(event) => setPostForm({ ...postForm, level: event.target.value })}
+                >
+                  {JOB_LEVEL_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                <select
+                  className="input-base"
+                  value={postForm.urgency}
+                  onChange={(event) => setPostForm({ ...postForm, urgency: event.target.value })}
+                >
+                  {JOB_URGENCY_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                <input
+                  className="input-base"
+                  placeholder="Application email"
+                  value={postForm.applyEmail}
+                  onChange={(event) => setPostForm({ ...postForm, applyEmail: event.target.value })}
+                />
+                <input
+                  className="input-base md:col-span-2"
+                  placeholder="Application link"
+                  value={postForm.applyUrl}
+                  onChange={(event) => setPostForm({ ...postForm, applyUrl: event.target.value })}
+                />
+                <textarea
+                  className="input-base md:col-span-2 min-h-[100px]"
+                  placeholder="Responsibilities, separated by commas"
+                  value={postForm.responsibilities}
+                  onChange={(event) => setPostForm({ ...postForm, responsibilities: event.target.value })}
+                />
+                <textarea
+                  className="input-base md:col-span-2 min-h-[100px]"
+                  placeholder="Requirements, separated by commas"
+                  value={postForm.requirements}
+                  onChange={(event) => setPostForm({ ...postForm, requirements: event.target.value })}
+                />
+                <textarea
+                  className="input-base md:col-span-2 min-h-[80px]"
+                  placeholder="Benefits, separated by commas"
+                  value={postForm.benefits}
+                  onChange={(event) => setPostForm({ ...postForm, benefits: event.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-3xl p-5" style={{ background: '#fff', color: '#101426', boxShadow: '0 24px 70px rgba(91, 33, 182, 0.18)' }}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-2xl grid place-items-center font-black text-3xl" style={{ color: '#5B21B6', border: '1px solid #E6DDFE' }}>
+                    N
+                  </div>
+                  <div>
+                    <p className="font-black text-lg flex items-center gap-1">
+                      {postForm.company || 'NendPlay Media'}
+                      <RiCheckboxCircleFill style={{ color: '#5B21B6' }} />
+                    </p>
+                    <p className="text-sm" style={{ color: '#5F667A' }}>{postForm.tagline || 'Empowering Jobs. Inspiring Futures.'}</p>
+                  </div>
+                </div>
+                <span className="px-3 py-2 rounded-xl text-sm font-black text-white" style={{ background: '#5B21B6' }}>
+                  {postForm.urgency || 'New'}
+                </span>
+              </div>
+
+              <h3 className="mt-6 text-3xl font-black leading-tight">{postForm.header || 'Job Position / Title'}</h3>
+              <div className="mt-5 grid grid-cols-1 gap-3 text-sm">
+                <div className="flex items-center gap-3">
+                  <RiMapPin2Line className="text-2xl" style={{ color: '#5B21B6' }} />
+                  <span className="font-bold">Location</span>
+                  <span>{postForm.location || 'Lagos, Nigeria'}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <RiMoneyDollarCircleLine className="text-2xl" style={{ color: '#5B21B6' }} />
+                  <span className="font-bold">Salary</span>
+                  <span style={{ color: '#5B21B6' }}>{postForm.salary || 'Salary range'}</span>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {[postForm.experience, postForm.deadline, postForm.jobType, postForm.jobMode, postForm.level]
+                    .filter(Boolean)
+                    .map((item) => (
+                      <span key={item} className="px-3 py-2 rounded-xl text-xs font-bold" style={{ background: '#F4EFFF', color: '#4C1D95' }}>
+                        {item}
+                      </span>
+                    ))}
+                </div>
+              </div>
+              <div className="mt-5 border-t pt-4" style={{ borderColor: '#ECE8F7' }}>
+                <p className="font-black mb-2" style={{ color: '#5B21B6' }}>Requirements</p>
+                <ul className="space-y-2 text-sm" style={{ color: '#20263A' }}>
+                  {(normalizeInputList(postForm.requirements).length ? normalizeInputList(postForm.requirements) : ['Requirement point one goes here.']).map((item) => (
+                    <li key={item} className="flex gap-2"><span style={{ color: '#5B21B6' }}>•</span>{item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="mt-5 flex gap-2">
+                <span className="flex-1 px-4 py-3 rounded-2xl text-center font-bold" style={{ background: '#F8F5FF', color: '#5B21B6' }}>
+                  0 applied
+                </span>
+                <span className="flex-1 px-4 py-3 rounded-2xl text-center font-black text-white" style={{ background: '#5B21B6' }}>
+                  Apply Now
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mt-4">
           <p className="text-sm font-black mb-2" style={{ color: 'var(--color-text)' }}>
@@ -2097,7 +2321,11 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
               </button>
             )}
             <button className="btn-primary px-5 py-3 text-sm" disabled={posting} onClick={submitPost}>
-              {posting ? 'Saving...' : editingPost ? 'Save News' : 'Post News'}
+              {posting
+                ? 'Saving...'
+                : editingPost
+                  ? (postForm.section === 'career' ? 'Save Job' : 'Save News')
+                  : (postForm.section === 'career' ? 'Post Job' : 'Post News')}
             </button>
           </div>
         </div>
@@ -2222,48 +2450,60 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {articles.map((article, index) => (
-            <article key={article.id || `${article.title}-${index}`} className="card overflow-hidden">
-              {article.imageUrl && (
-                <div className="aspect-video overflow-hidden" style={{ background: 'var(--color-surface-high)' }}>
-                  <img src={article.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
-                </div>
-              )}
-              <div className="p-5">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <p className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
-                    {article.source || 'News source'}
+          {articles.map((article, index) => {
+            if ((article.section || filters.section) === 'career') {
+              return (
+                <CareerAdminCard
+                  key={article.id || `${article.title}-${index}`}
+                  article={article}
+                  onEdit={startEditingPost}
+                  onDelete={deletePost}
+                />
+              )
+            }
+            return (
+              <article key={article.id || `${article.title}-${index}`} className="card overflow-hidden">
+                {article.imageUrl && (
+                  <div className="aspect-video overflow-hidden" style={{ background: 'var(--color-surface-high)' }}>
+                    <img src={article.imageUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  </div>
+                )}
+                <div className="p-5">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <p className="text-xs font-black uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>
+                      {article.source || 'News source'}
+                    </p>
+                    <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      {article.publishedAt ? new Date(article.publishedAt).toLocaleString() : 'No date'}
+                    </span>
+                  </div>
+                  <h3 className="font-black text-lg leading-snug" style={{ color: 'var(--color-text)' }}>
+                    {article.title}
+                  </h3>
+                  <p className="mt-2 text-sm line-clamp-3" style={{ color: 'var(--color-text-muted)' }}>
+                    {article.summary}
                   </p>
-                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                    {article.publishedAt ? new Date(article.publishedAt).toLocaleString() : 'No date'}
-                  </span>
-                </div>
-                <h3 className="font-black text-lg leading-snug" style={{ color: 'var(--color-text)' }}>
-                  {article.title}
-                </h3>
-                <p className="mt-2 text-sm line-clamp-3" style={{ color: 'var(--color-text-muted)' }}>
-                  {article.summary}
-                </p>
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    {(article.categories?.length ? article.categories : [article.category || filters.tab]).map((category) => (
-                      <Badge key={category}>{category}</Badge>
-                    ))}
-                    <Badge>{NEWS_SECTION_OPTIONS.find((item) => item.value === (article.section || 'news'))?.label || 'News'}</Badge>
-                    <Badge>{article.status || 'published'}</Badge>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="btn-ghost px-4 py-2 text-sm" type="button" onClick={() => startEditingPost(article)}>
-                      Edit
-                    </button>
-                    <button className="btn-ghost px-4 py-2 text-sm" type="button" onClick={() => deletePost(article)}>
-                      Delete
-                    </button>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap gap-2">
+                      {(article.categories?.length ? article.categories : [article.category || filters.tab]).map((category) => (
+                        <Badge key={category}>{category}</Badge>
+                      ))}
+                      <Badge>{NEWS_SECTION_OPTIONS.find((item) => item.value === (article.section || 'news'))?.label || 'News'}</Badge>
+                      <Badge>{article.status || 'published'}</Badge>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="btn-ghost px-4 py-2 text-sm" type="button" onClick={() => startEditingPost(article)}>
+                        Edit
+                      </button>
+                      <button className="btn-ghost px-4 py-2 text-sm" type="button" onClick={() => deletePost(article)}>
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            )
+          })}
         </div>
       )}
 
@@ -2279,6 +2519,114 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
         </div>
       )}
     </div>
+  )
+}
+
+function CareerAdminCard({ article, onEdit, onDelete }) {
+  const requirements = article.requirements?.length ? article.requirements : [article.summary].filter(Boolean)
+  const benefits = article.benefits?.length ? article.benefits : []
+  const categories = article.categories?.length ? article.categories : [article.category].filter(Boolean)
+  const detailUrl = `/news/${article.id || article._id}`
+
+  return (
+    <article className="rounded-3xl overflow-hidden" style={{ background: '#fff', color: '#101426', boxShadow: '0 22px 60px rgba(91, 33, 182, 0.14)' }}>
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-14 h-14 rounded-2xl grid place-items-center font-black text-2xl shrink-0" style={{ color: '#5B21B6', border: '1px solid #E6DDFE' }}>
+              N
+            </div>
+            <div className="min-w-0">
+              <p className="font-black text-base truncate flex items-center gap-1">
+                {article.company || article.source || 'NendPlay Media'}
+                <RiCheckboxCircleFill style={{ color: '#5B21B6' }} />
+              </p>
+              <p className="text-xs truncate" style={{ color: '#687089' }}>{article.tagline || 'Empowering Jobs. Inspiring Futures.'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="px-3 py-2 rounded-xl text-xs font-black text-white" style={{ background: '#5B21B6' }}>
+              {article.urgency || 'New'}
+            </span>
+            <button type="button" className="w-10 h-10 rounded-xl grid place-items-center" style={{ border: '1px solid #E6DDFE' }} onClick={() => navigator.clipboard?.writeText(`${window.location.origin}${detailUrl}`)}>
+              <RiShareForwardLine />
+            </button>
+          </div>
+        </div>
+
+        <h3 className="mt-5 text-2xl font-black leading-tight">{article.title || article.header || 'Job Position / Title'}</h3>
+
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div className="flex items-center gap-2">
+            <RiMapPin2Line style={{ color: '#5B21B6' }} />
+            <span>{article.location || 'Location not set'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <RiMoneyDollarCircleLine style={{ color: '#5B21B6' }} />
+            <span style={{ color: '#5B21B6' }}>{article.salary || 'Salary not set'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <RiBriefcase4Line style={{ color: '#5B21B6' }} />
+            <span>{article.experience || 'Experience not set'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <RiCalendarLine style={{ color: '#5B21B6' }} />
+            <span>{article.deadline ? new Date(article.deadline).toLocaleDateString() : 'Deadline not set'}</span>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {[article.jobType, article.jobMode, article.level, ...categories].filter(Boolean).slice(0, 8).map((item) => (
+            <span key={item} className="px-3 py-2 rounded-xl text-xs font-bold" style={{ background: '#F4EFFF', color: '#4C1D95' }}>
+              {item}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-4 border-t pt-4" style={{ borderColor: '#ECE8F7' }}>
+          <p className="font-black mb-2 flex items-center gap-2" style={{ color: '#5B21B6' }}>
+            <RiCheckboxCircleFill /> Requirements
+          </p>
+          <ul className="space-y-1 text-sm" style={{ color: '#20263A' }}>
+            {requirements.slice(0, 4).map((item) => (
+              <li key={item} className="flex gap-2"><span style={{ color: '#5B21B6' }}>•</span>{item}</li>
+            ))}
+          </ul>
+        </div>
+
+        {benefits.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {benefits.slice(0, 5).map((item) => (
+              <span key={item} className="px-3 py-2 rounded-xl text-xs font-bold" style={{ background: '#FAF7FF', color: '#5B21B6', border: '1px solid #E6DDFE' }}>
+                {item}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            <span className="px-3 py-2 rounded-xl text-xs font-bold" style={{ background: '#F8F5FF', color: '#5B21B6' }}>
+              <RiTeamLine className="inline mr-1" /> {article.viewCount || 0} views
+            </span>
+            <span className="px-3 py-2 rounded-xl text-xs font-bold" style={{ background: '#F8F5FF', color: '#5B21B6' }}>
+              {article.status || 'published'}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <button className="btn-ghost px-4 py-2 text-sm" type="button" onClick={() => window.open(detailUrl, '_blank', 'noopener,noreferrer')}>
+              View
+            </button>
+            <button className="btn-ghost px-4 py-2 text-sm" type="button" onClick={() => onEdit(article)}>
+              Edit
+            </button>
+            <button className="btn-ghost px-4 py-2 text-sm" type="button" onClick={() => onDelete(article)}>
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
   )
 }
 
