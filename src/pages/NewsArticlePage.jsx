@@ -3,9 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   RiArrowLeftLine, RiBookmarkLine, RiBookOpenLine, RiBriefcase4Line, RiCalendarLine,
-  RiChat3Line, RiCheckboxCircleFill, RiHeadphoneLine, RiHeartLine, RiMapPin2Line,
-  RiMoneyDollarCircleLine, RiMore2Fill, RiPlayFill, RiSearchLine, RiSendPlaneFill,
-  RiShareForwardLine, RiTeamLine, RiTimeLine,
+  RiChat3Line, RiCheckboxCircleFill, RiExternalLinkLine, RiEyeLine, RiFireLine, RiGiftLine,
+  RiGlobalLine, RiHeadphoneLine, RiHeartLine, RiHomeHeartLine, RiLineChartLine,
+  RiMapPin2Line, RiMegaphoneLine, RiMoneyDollarCircleLine, RiMore2Fill, RiPlayFill,
+  RiSearchLine, RiSendPlaneFill, RiShareForwardLine, RiShieldCheckLine, RiSuitcaseLine,
+  RiTeamLine, RiTimeLine,
 } from 'react-icons/ri'
 import ReactPlayer from 'react-player'
 import { newsService } from '../services'
@@ -41,7 +43,7 @@ function getCategory(post) {
   return String(value).replace(/[-_]/g, ' ')
 }
 
-function getJobRequirements(post = {}) {
+function getLegacyJobRequirements(post = {}) {
   const lines = String(post.body || '')
     .split(/\n+/)
     .map((line) => line.replace(/^[-*•]\s*/, '').trim())
@@ -50,7 +52,7 @@ function getJobRequirements(post = {}) {
   return [post.subHeader || 'Relevant experience and strong communication skills required.']
 }
 
-function getJobMeta(post = {}) {
+function getLegacyJobMeta(post = {}) {
   return {
     company: post.company || post.source || 'NendPlay Media',
     tagline: post.tagline || 'Empowering Jobs. Inspiring Futures.',
@@ -60,7 +62,70 @@ function getJobMeta(post = {}) {
     experience: post.experience || post.yearsExperience || post.subHeader || '2 - 4 years',
     deadline: formatDate(post.deadline || post.applicationDeadline || post.publishedAt || post.createdAt),
     appliedCount: post.appliedCount || post.applicationCount || 120,
+    requirements: getLegacyJobRequirements(post),
+  }
+}
+
+function getJobLines(post = {}) {
+  return String(post.body || '')
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+    .filter(Boolean)
+}
+
+function getJobRequirements(post = {}) {
+  const lines = getJobLines(post)
+  if (Array.isArray(post.requirements) && post.requirements.length) return post.requirements
+  if (lines.length > 1) return lines.slice(1, 6)
+  if (lines.length) return lines
+  return [post.subHeader || 'Relevant experience and strong communication skills required.']
+}
+
+function getJobResponsibilities(post = {}) {
+  const lines = getJobLines(post)
+  if (Array.isArray(post.responsibilities) && post.responsibilities.length) return post.responsibilities
+  if (lines.length > 2) return lines.slice(0, 5)
+  return [
+    'Build and maintain high-quality products using modern tools and best practices.',
+    'Collaborate with designers, product teams, and stakeholders to deliver strong results.',
+    'Communicate clearly, document work, and improve workflows across the team.',
+  ]
+}
+
+function getJobBenefits() {
+  return [
+    { label: 'Health Insurance', icon: RiShieldCheckLine },
+    { label: 'Remote Work', icon: RiHomeHeartLine },
+    { label: 'Paid Leave', icon: RiCalendarLine },
+    { label: 'Career Growth', icon: RiLineChartLine },
+    { label: 'Pension Plan', icon: RiTeamLine },
+  ]
+}
+
+function getJobMeta(post = {}) {
+  const lines = getJobLines(post)
+  const category = getCategory(post)
+  return {
+    company: post.company || post.source || 'NendPlay Media',
+    tagline: post.tagline || 'Empowering Jobs. Inspiring Futures.',
+    title: post.header || post.title || 'Job Position / Title',
+    location: post.location || post.jobLocation || 'Lagos, Nigeria',
+    salary: post.salary || post.salaryRange || 'Salary disclosed during application',
+    experience: post.experience || post.yearsExperience || post.subHeader || '2 - 4 years',
+    deadline: formatDate(post.deadline || post.applicationDeadline || post.publishedAt || post.createdAt),
+    posted: timeAgo(post.publishedAt || post.createdAt),
+    jobType: post.jobType || 'Full-time',
+    workMode: post.jobMode ? String(post.jobMode).replace(/[-_]/g, ' ') : 'Remote',
+    level: post.level || 'Mid-Level',
+    urgency: post.urgency || 'Urgent',
+    category,
+    summary: post.summary || post.jobSummary || post.subHeader || lines[0] || 'We are looking for a skilled and passionate professional to join our dynamic team.',
+    responsibilities: getJobResponsibilities(post),
+    appliedCount: post.appliedCount || post.applicationCount || 120,
+    applyEmail: post.applyEmail || post.contactEmail || 'careers@nendplaymedia.com',
+    applyUrl: post.applyUrl || post.applicationUrl || 'https://nendplay.com/careers',
     requirements: getJobRequirements(post),
+    benefits: getJobBenefits(post),
   }
 }
 
@@ -220,115 +285,151 @@ export default function NewsArticlePage() {
 
   if (post.section === 'career') {
     const job = getJobMeta(post)
+    const openApply = () => {
+      if (job.applyUrl) window.open(job.applyUrl, '_blank', 'noopener,noreferrer')
+      else window.location.href = `mailto:${job.applyEmail}?subject=Application for ${job.title}`
+    }
+    const jobChips = [
+      { label: job.jobType, icon: RiSuitcaseLine },
+      { label: job.workMode, icon: RiGlobalLine },
+      { label: job.level, icon: RiLineChartLine },
+      { label: job.urgency, icon: RiFireLine, urgent: true },
+      { label: job.category, icon: RiBookmarkLine },
+    ]
 
     return (
-      <div className="mx-auto max-w-5xl animate-fade-in pb-24">
-        <article className="overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-purple-950/10 ring-1 ring-purple-100">
+      <div className="mx-auto max-w-5xl animate-fade-in pb-28">
+        <article className="overflow-hidden rounded-[2rem] bg-white text-slate-950 shadow-2xl shadow-purple-950/10 ring-1 ring-purple-100">
           <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4 md:px-8">
-            <button type="button" onClick={() => navigate(-1)} className="grid h-11 w-11 place-items-center rounded-full text-slate-950 hover:bg-slate-100">
-              <RiArrowLeftLine size={26} />
+            <button type="button" onClick={() => navigate(-1)} className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-lg font-bold hover:bg-slate-100">
+              <RiArrowLeftLine size={24} /> Back
             </button>
-            <h1 className="text-xl font-black text-slate-950 md:text-3xl">
-              <span className="text-purple-700">NendPlay</span> Career
-            </h1>
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={() => toast.success('Saved for later')} className="grid h-11 w-11 place-items-center rounded-full text-slate-950 hover:bg-slate-100">
-                <RiBookmarkLine size={24} />
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => toast.success('Saved for later')} className="grid h-14 w-14 place-items-center rounded-2xl border border-purple-100 text-purple-700 hover:bg-purple-50">
+                <RiBookmarkLine size={26} />
+                <span className="sr-only">Save</span>
               </button>
-              <button type="button" onClick={sharePost} className="grid h-11 w-11 place-items-center rounded-full text-slate-950 hover:bg-slate-100">
-                <RiShareForwardLine size={24} />
+              <button type="button" onClick={sharePost} className="grid h-14 w-14 place-items-center rounded-2xl border border-purple-100 text-purple-700 hover:bg-purple-50">
+                <RiShareForwardLine size={26} />
+                <span className="sr-only">Share</span>
               </button>
             </div>
           </header>
 
           <div className="px-5 py-7 md:px-10 md:py-9">
-            <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-              <div className="flex items-center gap-5">
-                <div className="grid h-24 w-24 place-items-center rounded-full border border-purple-100 bg-white shadow-inner">
-                  <div className="text-center">
-                    <p className="text-5xl font-black text-purple-700">N</p>
-                    <p className="text-sm font-black text-purple-700">NendPlay</p>
+            <section className="grid gap-6 md:grid-cols-[140px_1fr]">
+              <div className="grid h-28 w-28 place-items-center rounded-3xl border border-purple-100 bg-white shadow-inner md:h-36 md:w-36">
+                <div className="text-center">
+                  <p className="text-6xl font-black text-purple-700">N</p>
+                  <p className="text-base font-black text-purple-700">NendPlay</p>
+                </div>
+              </div>
+              <div>
+                <h2 className="text-3xl font-black leading-tight tracking-tight md:text-5xl">{job.title}</h2>
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-base font-semibold text-slate-700 md:text-lg">
+                  <span className="inline-flex items-center gap-2 text-slate-950">
+                    {job.company} <RiCheckboxCircleFill className="text-purple-700" />
+                  </span>
+                  <span className="inline-flex items-center gap-2"><RiMapPin2Line className="text-purple-700" /> {job.location}</span>
+                  <span className="inline-flex items-center gap-2 font-black text-purple-700"><RiMoneyDollarCircleLine /> {job.salary}</span>
+                  <span className="inline-flex items-center gap-2"><RiTimeLine className="text-purple-700" /> {job.experience}</span>
+                  <span className="inline-flex items-center gap-2"><RiCalendarLine className="text-purple-700" /> {job.deadline}</span>
+                  <span>{job.posted}</span>
+                </div>
+              </div>
+            </section>
+
+            <div className="mt-7 flex flex-wrap gap-3">
+              {jobChips.map(({ label, icon: Icon, urgent }) => (
+                <span key={label} className={`inline-flex items-center gap-2 rounded-2xl border px-5 py-3 font-black ${urgent ? 'border-red-100 bg-red-50 text-red-600' : 'border-purple-100 bg-purple-50 text-purple-700'}`}>
+                  <Icon /> {label}
+                </span>
+              ))}
+            </div>
+
+            <section className="mt-8">
+              <h3 className="mb-3 flex items-center gap-3 text-2xl font-black"><RiBookOpenLine className="text-purple-700" /> Job Summary</h3>
+              <p className="max-w-4xl text-lg leading-8 text-slate-800">{job.summary}</p>
+            </section>
+
+            <aside className="mt-8 overflow-hidden rounded-2xl border border-purple-100 bg-gradient-to-r from-purple-50 via-white to-purple-50 p-6">
+              <div className="grid gap-5 md:grid-cols-[1fr_240px] md:items-center">
+                <div>
+                  <p className="text-sm font-bold text-slate-500">Sponsored</p>
+                  <h3 className="mt-2 text-2xl font-black">Grow your brand with NendPlay Ads</h3>
+                  <p className="mt-2 max-w-xl font-semibold leading-7 text-slate-600">Reach thousands of professionals and talent on NendPlay.</p>
+                </div>
+                <button type="button" onClick={() => navigate('/advertise')} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-purple-700 px-6 py-4 font-black text-white">
+                  <RiMegaphoneLine /> Learn More
+                </button>
+              </div>
+            </aside>
+
+            <section className="mt-8 border-t border-slate-100 pt-8">
+              <h3 className="mb-4 flex items-center gap-3 text-2xl font-black"><RiBookOpenLine className="text-purple-700" /> Responsibilities</h3>
+              <ul className="space-y-2 text-base leading-7 text-slate-800 md:text-lg">
+                {job.responsibilities.map((item, index) => <li key={`${item}-${index}`}>• {item}</li>)}
+              </ul>
+            </section>
+
+            <section className="mt-8 border-t border-slate-100 pt-8">
+              <h3 className="mb-4 flex items-center gap-3 text-2xl font-black"><RiCheckboxCircleFill className="text-purple-700" /> Requirements</h3>
+              <ul className="space-y-2 text-base leading-7 text-slate-800 md:text-lg">
+                {job.requirements.map((item, index) => <li key={`${item}-${index}`}>• {item}</li>)}
+              </ul>
+            </section>
+
+            <section className="mt-8 border-t border-slate-100 pt-8">
+              <h3 className="mb-4 flex items-center gap-3 text-2xl font-black"><RiGiftLine className="text-purple-700" /> Benefits</h3>
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-5">
+                {job.benefits.map(({ label, icon: Icon }) => (
+                  <div key={label} className="rounded-2xl border border-purple-100 bg-purple-50/60 p-4 text-center font-black text-slate-900">
+                    <Icon className="mx-auto mb-2 text-3xl text-purple-700" />
+                    {label}
                   </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="mt-8 border-t border-slate-100 pt-8">
+              <h3 className="mb-4 flex items-center gap-3 text-2xl font-black"><RiSendPlaneFill className="text-purple-700" /> How to Apply</h3>
+              <div className="grid gap-4 rounded-2xl border border-purple-100 p-5 md:grid-cols-2">
+                <div>
+                  <p className="text-sm font-bold text-slate-500">Email</p>
+                  <p className="mt-1 font-black">{job.applyEmail}</p>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-2xl font-black text-slate-950">{job.company}</p>
-                    <RiCheckboxCircleFill className="text-2xl text-purple-700" />
-                  </div>
-                  <p className="mt-1 text-lg font-semibold text-slate-600">{job.tagline}</p>
+                  <p className="text-sm font-bold text-slate-500">Application Link</p>
+                  <button type="button" onClick={openApply} className="mt-1 inline-flex items-center gap-2 font-black text-purple-700">
+                    {job.applyUrl} <RiExternalLinkLine />
+                  </button>
                 </div>
               </div>
-              <span className="w-fit rounded-xl bg-purple-700 px-5 py-2 text-lg font-black text-white">New</span>
+            </section>
+
+            <div className="mt-8 grid gap-3 rounded-2xl border border-purple-100 p-4 text-sm font-black text-purple-700 sm:grid-cols-4">
+              <button type="button" onClick={likePost} className="inline-flex items-center justify-center gap-2"><RiHeartLine /> Like ({post.likeCount || 0})</button>
+              <span className="inline-flex items-center justify-center gap-2"><RiChat3Line /> Comments ({post.comments?.length || 0})</span>
+              <button type="button" onClick={sharePost} className="inline-flex items-center justify-center gap-2"><RiShareForwardLine /> Share</button>
+              <span className="inline-flex items-center justify-center gap-2"><RiEyeLine /> {post.viewCount || 0} Views</span>
             </div>
 
-            <h2 className="mt-10 border-b border-slate-200 pb-8 text-5xl font-black leading-tight tracking-tight text-slate-950 md:text-7xl">
-              {job.title}
-            </h2>
-
-            <div className="mt-8 grid gap-5">
-              <div className="grid gap-5 md:grid-cols-2">
-                <div className="flex items-center gap-5">
-                  <span className="grid h-16 w-16 place-items-center rounded-2xl bg-purple-50 text-purple-700">
-                    <RiMapPin2Line size={34} />
-                  </span>
-                  <div className="grid gap-1 md:grid-cols-[160px_1fr]">
-                    <p className="text-xl font-black">Location</p>
-                    <p className="text-xl font-semibold text-slate-700">{job.location}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-5">
-                  <span className="grid h-16 w-16 place-items-center rounded-2xl bg-purple-50 text-purple-700">
-                    <RiMoneyDollarCircleLine size={34} />
-                  </span>
-                  <div className="grid gap-1 md:grid-cols-[120px_1fr]">
-                    <p className="text-xl font-black">Salary</p>
-                    <p className="text-xl font-semibold text-purple-700">{job.salary}</p>
-                  </div>
-                </div>
+            <section className="mt-8">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-xl font-black">You may also like</h3>
+                <button type="button" onClick={() => navigate('/news?section=career')} className="font-black text-purple-700">View all</button>
               </div>
-
-              <div className="flex flex-wrap items-center gap-8 rounded-2xl border border-purple-100 bg-purple-50/70 px-6 py-5 text-xl font-semibold text-slate-900">
-                <span className="inline-flex items-center gap-3"><RiBriefcase4Line className="text-purple-700" /> {job.experience}</span>
-                <span className="text-3xl font-black text-purple-700">//</span>
-                <span className="inline-flex items-center gap-3"><RiCalendarLine className="text-purple-700" /> {job.deadline}</span>
-              </div>
-            </div>
-
-            <div className="mt-9 border-t border-slate-100 pt-8">
-              <div className="mb-5 flex items-center gap-4">
-                <span className="grid h-14 w-14 place-items-center rounded-2xl bg-purple-50 text-purple-700">
-                  <RiBookOpenLine size={28} />
-                </span>
-                <h3 className="text-2xl font-black text-purple-700">Requirements</h3>
-              </div>
-              <ul className="space-y-4 text-xl leading-8 text-slate-900">
-                {job.requirements.map((requirement, index) => (
-                  <li key={`${requirement}-${index}`} className="flex gap-4">
-                    <span className="mt-3 h-2 w-2 shrink-0 rounded-full bg-purple-700" />
-                    <span>{requirement}</span>
-                  </li>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {['React Native Developer', 'Flutter Developer', 'Backend Developer', 'Product Manager'].map((title, index) => (
+                  <button key={title} type="button" className="rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm">
+                    <RiBriefcase4Line className="mb-3 text-3xl text-purple-700" />
+                    <p className="font-black">{title}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">{index === 1 ? 'Remote' : 'Lagos, Nigeria'}</p>
+                    <p className="mt-3 font-black text-purple-700">₦{280 + index * 40}k - ₦{400 + index * 50}k</p>
+                  </button>
                 ))}
-              </ul>
-            </div>
-
-            <div className="mt-9 flex items-center gap-5 rounded-2xl border border-dashed border-purple-400 bg-purple-50/50 p-6">
-              <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-purple-700 text-white">
-                <RiCheckboxCircleFill size={34} />
-              </span>
-              <div>
-                <p className="text-xl font-black text-slate-950">Be part of a growing team making impact every day.</p>
-                <p className="mt-1 text-lg text-slate-700">Apply now and take the next step in your career.</p>
               </div>
-            </div>
-          </div>
-
-          <div className="grid gap-4 bg-purple-50/50 p-5 md:grid-cols-[1fr_1fr] md:p-8">
-            <div className="inline-flex items-center justify-center gap-3 rounded-2xl border border-purple-100 bg-white px-6 py-5 text-xl font-bold text-purple-700">
-              <RiTeamLine size={30} /> {job.appliedCount}+ people applied
-            </div>
-            <button type="button" onClick={sharePost} className="inline-flex items-center justify-center gap-3 rounded-2xl bg-purple-700 px-6 py-5 text-2xl font-black text-white shadow-xl shadow-purple-700/25">
-              <RiSendPlaneFill /> Apply Now
-            </button>
+            </section>
           </div>
         </article>
 
@@ -360,6 +461,16 @@ export default function NewsArticlePage() {
             ))}
           </div>
         </section>
+
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-purple-100 bg-white/95 px-4 py-3 shadow-2xl backdrop-blur">
+          <div className="mx-auto grid max-w-5xl gap-3 sm:grid-cols-3">
+            <button type="button" onClick={() => toast.success('Saved for later')} className="rounded-2xl border border-purple-200 py-4 font-black text-purple-700">Save</button>
+            <button type="button" onClick={sharePost} className="rounded-2xl border border-purple-200 py-4 font-black text-purple-700">Share</button>
+            <button type="button" onClick={openApply} className="rounded-2xl bg-purple-700 py-4 font-black text-white shadow-lg shadow-purple-700/25">
+              <RiSendPlaneFill className="mr-2 inline" /> Apply Now
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
