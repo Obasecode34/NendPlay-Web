@@ -60,6 +60,7 @@ export default function MediaPlayerPage() {
   const edgeTimer = useRef(null)
   const playbackRetryTimer = useRef(null)
   const playbackRetryCount = useRef(0)
+  const streamFallbackAttempted = useRef(false)
 
   useEffect(() => {
     fetchMedia()
@@ -80,6 +81,7 @@ export default function MediaPlayerPage() {
       setPlaybackUrl('')
       setPlaybackSourceType('')
       playbackRetryCount.current = 0
+      streamFallbackAttempted.current = false
       setCollectionItems([m, ...(m.collectionItems || [])].sort((a, b) => (
         (a.seasonNumber || 0) - (b.seasonNumber || 0)
         || (a.episodeNumber || 0) - (b.episodeNumber || 0)
@@ -111,6 +113,17 @@ export default function MediaPlayerPage() {
     setShowControls(true)
     clearTimeout(controlsTimer.current)
     controlsTimer.current = setTimeout(() => setShowControls(false), 3000)
+  }
+
+  const toggleControls = () => {
+    setShowControls((value) => {
+      const next = !value
+      clearTimeout(controlsTimer.current)
+      if (next) {
+        controlsTimer.current = setTimeout(() => setShowControls(false), 4000)
+      }
+      return next
+    })
   }
 
   const flashEdgeControl = (control) => {
@@ -248,6 +261,17 @@ export default function MediaPlayerPage() {
   const handlePlaybackError = (error) => {
     console.error('Media playback error', error)
     clearTimeout(playbackRetryTimer.current)
+    if (!streamFallbackAttempted.current) {
+      streamFallbackAttempted.current = true
+      const fallbackUrl = mediaService.resolveStreamUrl(mediaService.getStreamUrl(id))
+      if (fallbackUrl && fallbackUrl !== playbackUrl) {
+        setPlaybackUrl(fallbackUrl)
+        setPlaybackSourceType('')
+        setPlaybackAttempt((value) => value + 1)
+        setPlaying(true)
+        return
+      }
+    }
     if (playbackRetryCount.current < 2) {
       playbackRetryCount.current += 1
       playbackRetryTimer.current = setTimeout(() => {
@@ -312,7 +336,7 @@ export default function MediaPlayerPage() {
             className="relative aspect-video max-h-[620px] cursor-pointer bg-black"
             onMouseMove={handleMouseMove}
             onWheel={handlePlayerWheel}
-            onClick={() => setShowControls((value) => !value)}>
+            onClick={toggleControls}>
             <ReactPlayer
               key={`${id}-${playbackAttempt}`}
               ref={playerRef}
@@ -340,7 +364,6 @@ export default function MediaPlayerPage() {
                   attributes: {
                     controlsList: 'nodownload',
                     playsInline: true,
-                    crossOrigin: 'anonymous',
                   },
                 },
               }}
@@ -355,7 +378,7 @@ export default function MediaPlayerPage() {
               className={`absolute inset-0 flex flex-col justify-between bg-black/30 p-5 transition-opacity duration-300 ${showControls ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
               onClick={(e) => {
                 e.stopPropagation()
-                setShowControls(false)
+                if (e.target === e.currentTarget) toggleControls()
               }}>
               <div className="flex items-start justify-between">
                 {activeEdgeControl === 'brightness' ? <div className="flex w-12 flex-col items-center gap-2 rounded-3xl bg-black/55 py-3 text-white">
@@ -385,11 +408,11 @@ export default function MediaPlayerPage() {
               </div>
 
               <div className="flex items-center justify-center gap-6 text-white">
-                <button className="text-3xl" onClick={() => seekRelative(-10)}><RiSkipBackFill /></button>
-                <button className="rounded-full border-2 border-white p-4 text-4xl" onClick={() => setPlaying(!playing)}>
+                <button className="text-3xl" onClick={(e) => { e.stopPropagation(); seekRelative(-10) }}><RiSkipBackFill /></button>
+                <button className="rounded-full border-2 border-white p-4 text-4xl" onClick={(e) => { e.stopPropagation(); setPlaying(!playing) }}>
                   {playing ? <RiPauseFill /> : <RiPlayFill />}
                 </button>
-                <button className="text-3xl" onClick={() => seekRelative(10)}><RiSkipForwardFill /></button>
+                <button className="text-3xl" onClick={(e) => { e.stopPropagation(); seekRelative(10) }}><RiSkipForwardFill /></button>
               </div>
 
               <div>
@@ -415,7 +438,10 @@ export default function MediaPlayerPage() {
                     <button
                       key={label}
                       className="rounded-xl bg-black/40 px-2 py-1.5"
-                      onClick={() => label === 'Fullscreen' ? playerRef.current?.getInternalPlayer()?.requestFullscreen?.() : toast(`${label} settings`)}>
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        label === 'Fullscreen' ? playerRef.current?.getInternalPlayer()?.requestFullscreen?.() : toast(`${label} settings`)
+                      }}>
                       {label}
                     </button>
                   ))}

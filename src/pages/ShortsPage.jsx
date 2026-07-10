@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import ReactPlayer from 'react-player'
 import { RiHeartLine, RiHeartFill, RiBookmarkLine, RiBookmarkFill,
   RiDownloadLine, RiShareLine, RiPlayFill, RiThumbDownLine, RiChat1Line,
-  RiUserFollowLine } from 'react-icons/ri'
+  RiUserFollowLine, RiVolumeMuteFill, RiVolumeUpFill } from 'react-icons/ri'
 import { useInView } from 'react-intersection-observer'
 import toast from 'react-hot-toast'
 import { mediaService, downloadService } from '../services/index'
@@ -23,6 +23,7 @@ function formatCount(value = 0) {
 function ShortCard({ short, isActive, onActivate, onEnded }) {
   const { ref, inView } = useInView({ threshold: 0.7 })
   const [playing, setPlaying] = useState(false)
+  const [muted, setMuted] = useState(false)
   const [liked, setLiked] = useState(false)
   const [disliked, setDisliked] = useState(false)
   const [subscribed, setSubscribed] = useState(false)
@@ -203,13 +204,17 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
     <div id={`short-${short._id}`} ref={ref}
       className="relative flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer shadow-2xl"
       style={shortFrameStyle}
-      onClick={() => setPlaying(!playing)}>
+      onClick={() => {
+        setPlaying(!playing)
+        setMuted(false)
+      }}>
 
       {/* Player */}
       <ReactPlayer
         url={mediaService.resolveStreamUrl(mediaService.getStreamUrl(short._id))}
         playing={playing && isActive}
-        muted
+        muted={muted}
+        volume={muted ? 0 : 1}
         playsinline
         loop={false}
         onEnded={() => {
@@ -219,7 +224,7 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
         width="100%"
         height="100%"
         style={{ objectFit: 'cover' }}
-        config={{ file: { attributes: { playsInline: true, muted: true, style: { objectFit: 'cover', width: '100%', height: '100%' } } } }}
+        config={{ file: { attributes: { playsInline: true, style: { objectFit: 'cover', width: '100%', height: '100%' } } } }}
       />
 
       {/* Gradient overlay */}
@@ -270,6 +275,21 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
 
           {/* Side actions */}
           <div className="flex flex-col items-center gap-4">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setMuted((value) => !value)
+                setPlaying(true)
+              }}
+              className="flex flex-col items-center gap-1"
+            >
+              {muted
+                ? <RiVolumeMuteFill className="text-2xl text-white" />
+                : <RiVolumeUpFill className="text-2xl text-white" />
+              }
+              <span className="text-white text-xs">{muted ? 'Muted' : 'Sound'}</span>
+            </button>
+
             <button onClick={handleLike}
               className="flex flex-col items-center gap-1">
               {liked
