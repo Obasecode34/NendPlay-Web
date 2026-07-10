@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   RiBookOpenLine, RiDownloadLine, RiFileCopyLine, RiHeartLine, RiSearchLine,
   RiUploadLine, RiFileTextLine, RiCloseLine, RiShareForwardLine, RiLockLine,
-  RiFolderOpenLine, RiAddLine,
+  RiFolderOpenLine, RiAddLine, RiImageLine, RiShieldCheckLine,
 } from 'react-icons/ri'
 import { useInView } from 'react-intersection-observer'
 import toast from 'react-hot-toast'
@@ -55,6 +55,37 @@ const LICENSE_TYPES = [
   { value: 'owned', label: 'Owned by NendPlay/uploader' },
   { value: 'permission_granted', label: 'Permission granted' },
 ]
+
+const CONTENT_ORIGIN_OPTIONS = [
+  { value: 'creator_upload', label: 'Creator / author upload', helper: 'I own this PDF or have direct permission to publish it.' },
+  { value: 'public_domain', label: 'Public domain import', helper: 'A legal public-domain source such as Gutenberg or government libraries.' },
+  { value: 'creative_commons', label: 'Creative Commons import', helper: 'A CC-licensed source with attribution and license details.' },
+]
+
+const LANGUAGE_OPTIONS = [
+  'English', 'French', 'Spanish', 'Portuguese', 'Arabic', 'Chinese',
+  'Japanese', 'Korean', 'Hindi', 'Yoruba', 'Igbo', 'Hausa',
+]
+
+const INITIAL_UPLOAD_FORM = {
+  title: '',
+  author: '',
+  description: '',
+  category: 'fiction',
+  language: 'English',
+  tags: '',
+  licenseType: 'unknown',
+  contentOrigin: 'creator_upload',
+  sourceName: '',
+  sourceUrl: '',
+  licenseUrl: '',
+  attributionText: '',
+  rightsSummary: '',
+  requiresAttribution: false,
+  rightsConfirmed: false,
+  file: null,
+  thumbnailFile: null,
+}
 
 const OFFICE_TYPES = {
   pdf: 'PDF',
@@ -245,13 +276,7 @@ export default function NovelHubPage() {
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const { ref: loadMoreRef, inView: loadMoreInView } = useInView({ rootMargin: '320px' })
-  const [uploadForm, setUploadForm] = useState({
-    title: '', description: '', category: 'fiction',
-    author: '', tags: '', licenseType: 'unknown',
-    sourceName: '', sourceUrl: '', licenseUrl: '',
-    attributionText: '', rightsSummary: '', requiresAttribution: false,
-    file: null,
-  })
+  const [uploadForm, setUploadForm] = useState(INITIAL_UPLOAD_FORM)
 
   useEffect(() => { fetchDocuments(1, false) }, [search, genre])
 
@@ -292,37 +317,43 @@ export default function NovelHubPage() {
 
   const handleUpload = async (event) => {
     event.preventDefault()
-    if (!uploadForm.file || !uploadForm.title) {
-      toast.error('Please provide a title and PDF file')
+    if (!uploadForm.file || !uploadForm.title || !uploadForm.author || !uploadForm.category || !uploadForm.language) {
+      toast.error('Provide title, author, category, language, and PDF file')
+      return
+    }
+    if (!uploadForm.rightsConfirmed) {
+      toast.error('Confirm that you own this PDF or have legal permission to publish it')
+      return
+    }
+    if ((uploadForm.contentOrigin === 'public_domain' || uploadForm.contentOrigin === 'creative_commons' || uploadForm.licenseType.startsWith('cc_') || uploadForm.licenseType === 'public_domain') && !uploadForm.sourceUrl) {
+      toast.error('Public-domain and Creative Commons PDFs need a source URL')
       return
     }
     setUploading(true)
     try {
       const formData = new FormData()
       formData.append('document', uploadForm.file)
+      if (uploadForm.thumbnailFile) formData.append('thumbnail', uploadForm.thumbnailFile)
       formData.append('title', uploadForm.title)
       formData.append('description', uploadForm.description)
       formData.append('category', uploadForm.category)
       formData.append('genre', uploadForm.category)
       formData.append('author', uploadForm.author)
+      formData.append('language', uploadForm.language)
       formData.append('tags', uploadForm.tags)
       formData.append('licenseType', uploadForm.licenseType)
+      formData.append('contentOrigin', uploadForm.contentOrigin)
       formData.append('sourceName', uploadForm.sourceName)
       formData.append('sourceUrl', uploadForm.sourceUrl)
       formData.append('licenseUrl', uploadForm.licenseUrl)
       formData.append('attributionText', uploadForm.attributionText)
       formData.append('rightsSummary', uploadForm.rightsSummary)
       formData.append('requiresAttribution', uploadForm.requiresAttribution.toString())
+      formData.append('rightsConfirmed', uploadForm.rightsConfirmed.toString())
       await novelService.upload(formData)
-      toast.success('PDF uploaded to NovelHub')
+      toast.success('PDF submitted for NovelHub review')
       setShowUpload(false)
-      setUploadForm({
-        title: '', description: '', category: 'fiction',
-        author: '', tags: '', licenseType: 'unknown',
-        sourceName: '', sourceUrl: '', licenseUrl: '',
-        attributionText: '', rightsSummary: '', requiresAttribution: false,
-        file: null,
-      })
+      setUploadForm(INITIAL_UPLOAD_FORM)
       fetchDocuments(1, false)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Upload failed')
@@ -680,80 +711,146 @@ export default function NovelHubPage() {
       {showUpload && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
-          <div className="w-full max-w-md rounded-2xl p-6 animate-slide-up"
+          <div className="w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl p-6 animate-slide-up"
             style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-xl font-bold" style={{ color: 'var(--color-text)' }}>Upload PDF</h2>
+              <div>
+                <h2 className="font-display text-xl font-bold" style={{ color: 'var(--color-text)' }}>Upload NovelHub PDF</h2>
+                <p className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                  Add the document, cover image, reading category, and rights information required for admin review.
+                </p>
+              </div>
               <button onClick={() => setShowUpload(false)} className="p-2" style={{ color: 'var(--color-text-muted)' }}>
                 <RiCloseLine />
               </button>
             </div>
-            <form onSubmit={handleUpload} className="space-y-3">
-              <input type="text" placeholder="Title *" value={uploadForm.title}
-                onChange={(event) => setUploadForm({ ...uploadForm, title: event.target.value })}
-                className="input-base" required />
-              <input type="text" placeholder="Author" value={uploadForm.author}
-                onChange={(event) => setUploadForm({ ...uploadForm, author: event.target.value })}
-                className="input-base" />
-              <textarea placeholder="Description" value={uploadForm.description}
-                onChange={(event) => setUploadForm({ ...uploadForm, description: event.target.value })}
-                className="input-base resize-none" rows={3} />
-              <select value={uploadForm.category}
-                onChange={(event) => setUploadForm({ ...uploadForm, category: event.target.value })}
-                className="input-base">
-                {PDF_GENRES.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
-              </select>
-              <input type="text" placeholder="Tags (comma separated)" value={uploadForm.tags}
-                onChange={(event) => setUploadForm({ ...uploadForm, tags: event.target.value })}
-                className="input-base" />
-              <div className="rounded-xl p-4 space-y-3" style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
-                <div>
-                  <p className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>Rights and source</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
-                    Record public domain, Creative Commons, or permission details for this PDF.
+            <form onSubmit={handleUpload} className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <button type="button" className="rounded-xl border-2 border-dashed p-5 text-left transition-colors"
+                  style={{ borderColor: uploadForm.file ? 'var(--color-primary)' : 'var(--color-border)', background: 'var(--color-surface-high)' }}
+                  onClick={() => document.getElementById('doc-file').click()}>
+                  <RiUploadLine className="mb-3 text-2xl" style={{ color: 'var(--color-primary)' }} />
+                  <p className="text-sm font-black" style={{ color: 'var(--color-text)' }}>Document file *</p>
+                  <p className="mt-1 text-xs leading-5" style={{ color: 'var(--color-text-muted)' }}>
+                    {uploadForm.file ? uploadForm.file.name : 'Select a PDF file. NovelHub PDF uploads are reviewed before publishing.'}
                   </p>
+                  <input id="doc-file" type="file" className="hidden" accept=".pdf,application/pdf"
+                    onChange={(event) => setUploadForm({ ...uploadForm, file: event.target.files?.[0] || null })} />
+                </button>
+
+                <button type="button" className="rounded-xl border-2 border-dashed p-5 text-left transition-colors"
+                  style={{ borderColor: uploadForm.thumbnailFile ? 'var(--color-primary)' : 'var(--color-border)', background: 'var(--color-surface-high)' }}
+                  onClick={() => document.getElementById('doc-thumbnail').click()}>
+                  <RiImageLine className="mb-3 text-2xl" style={{ color: 'var(--color-primary)' }} />
+                  <p className="text-sm font-black" style={{ color: 'var(--color-text)' }}>Cover / thumbnail</p>
+                  <p className="mt-1 text-xs leading-5" style={{ color: 'var(--color-text-muted)' }}>
+                    {uploadForm.thumbnailFile ? uploadForm.thumbnailFile.name : 'Optional JPG, PNG, or WebP cover shown in NovelHub cards.'}
+                  </p>
+                  <input id="doc-thumbnail" type="file" className="hidden" accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => setUploadForm({ ...uploadForm, thumbnailFile: event.target.files?.[0] || null })} />
+                </button>
+              </div>
+
+              <section className="rounded-xl p-4" style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
+                <p className="mb-3 text-sm font-black" style={{ color: 'var(--color-text)' }}>Book details</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <input type="text" placeholder="Title *" value={uploadForm.title}
+                    onChange={(event) => setUploadForm({ ...uploadForm, title: event.target.value })}
+                    className="input-base" required />
+                  <input type="text" placeholder="Author / publisher *" value={uploadForm.author}
+                    onChange={(event) => setUploadForm({ ...uploadForm, author: event.target.value })}
+                    className="input-base" required />
+                  <select value={uploadForm.category}
+                    onChange={(event) => setUploadForm({ ...uploadForm, category: event.target.value })}
+                    className="input-base">
+                    {PDF_GENRES.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+                  </select>
+                  <select value={uploadForm.language}
+                    onChange={(event) => setUploadForm({ ...uploadForm, language: event.target.value })}
+                    className="input-base">
+                    {LANGUAGE_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                  <input type="text" placeholder="Tags (comma separated)" value={uploadForm.tags}
+                    onChange={(event) => setUploadForm({ ...uploadForm, tags: event.target.value })}
+                    className="input-base md:col-span-2" />
+                  <textarea placeholder="Description / chapter one preview" value={uploadForm.description}
+                    onChange={(event) => setUploadForm({ ...uploadForm, description: event.target.value })}
+                    className="input-base resize-none md:col-span-2" rows={4} />
                 </div>
-                <select value={uploadForm.licenseType}
-                  onChange={(event) => setUploadForm({ ...uploadForm, licenseType: event.target.value })}
-                  className="input-base">
-                  {LICENSE_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                </select>
-                <input type="text" placeholder="Source name e.g. Project Gutenberg" value={uploadForm.sourceName}
-                  onChange={(event) => setUploadForm({ ...uploadForm, sourceName: event.target.value })}
-                  className="input-base" />
-                <input type="url" placeholder="Source URL" value={uploadForm.sourceUrl}
-                  onChange={(event) => setUploadForm({ ...uploadForm, sourceUrl: event.target.value })}
-                  className="input-base" />
-                <input type="url" placeholder="License URL" value={uploadForm.licenseUrl}
-                  onChange={(event) => setUploadForm({ ...uploadForm, licenseUrl: event.target.value })}
-                  className="input-base" />
-                <textarea placeholder="Attribution text" value={uploadForm.attributionText}
-                  onChange={(event) => setUploadForm({ ...uploadForm, attributionText: event.target.value })}
-                  className="input-base resize-none" rows={2} />
-                <textarea placeholder="Rights notes / proof summary" value={uploadForm.rightsSummary}
-                  onChange={(event) => setUploadForm({ ...uploadForm, rightsSummary: event.target.value })}
-                  className="input-base resize-none" rows={2} />
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={uploadForm.requiresAttribution}
-                    onChange={(event) => setUploadForm({ ...uploadForm, requiresAttribution: event.target.checked })}
-                    className="w-4 h-4 rounded" />
-                  <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Show attribution for this PDF</span>
-                </label>
-              </div>
-              <div className="cursor-pointer rounded-xl border-2 border-dashed p-4 text-center transition-colors"
-                style={{ borderColor: 'var(--color-border)' }}
-                onClick={() => document.getElementById('doc-file').click()}>
-                <RiUploadLine className="mx-auto mb-2 text-2xl" style={{ color: 'var(--color-primary)' }} />
-                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                  {uploadForm.file ? uploadForm.file.name : 'Click to select a PDF file'}
-                </p>
-                <input id="doc-file" type="file" className="hidden" accept=".pdf,application/pdf"
-                  onChange={(event) => setUploadForm({ ...uploadForm, file: event.target.files[0] })} />
-              </div>
+              </section>
+
+              <section className="rounded-xl p-4" style={{ background: 'var(--color-surface-high)', border: '1px solid var(--color-border)' }}>
+                <div className="mb-3 flex items-start gap-3">
+                  <RiShieldCheckLine className="mt-0.5 text-xl" style={{ color: 'var(--color-primary)' }} />
+                  <div>
+                    <p className="text-sm font-black" style={{ color: 'var(--color-text)' }}>Rights, license, and source</p>
+                    <p className="mt-1 text-xs leading-5" style={{ color: 'var(--color-text-muted)' }}>
+                      Store proof of ownership, public-domain status, or Creative Commons license before the PDF can go public.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {CONTENT_ORIGIN_OPTIONS.map((option) => {
+                    const active = uploadForm.contentOrigin === option.value
+                    return (
+                      <button key={option.value} type="button"
+                        onClick={() => setUploadForm({ ...uploadForm, contentOrigin: option.value })}
+                        className="rounded-xl p-3 text-left"
+                        style={{
+                          background: active ? 'var(--color-primary)' : 'var(--color-surface)',
+                          border: `1px solid ${active ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                          color: active ? '#fff' : 'var(--color-text)',
+                        }}>
+                        <span className="text-sm font-black">{option.label}</span>
+                        <span className="mt-1 block text-xs leading-5 opacity-80">{option.helper}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <select value={uploadForm.licenseType}
+                    onChange={(event) => setUploadForm({ ...uploadForm, licenseType: event.target.value })}
+                    className="input-base">
+                    {LICENSE_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                  </select>
+                  <input type="text" placeholder="Source name e.g. Project Gutenberg" value={uploadForm.sourceName}
+                    onChange={(event) => setUploadForm({ ...uploadForm, sourceName: event.target.value })}
+                    className="input-base" />
+                  <input type="url" placeholder="Source URL" value={uploadForm.sourceUrl}
+                    onChange={(event) => setUploadForm({ ...uploadForm, sourceUrl: event.target.value })}
+                    className="input-base" />
+                  <input type="url" placeholder="License URL" value={uploadForm.licenseUrl}
+                    onChange={(event) => setUploadForm({ ...uploadForm, licenseUrl: event.target.value })}
+                    className="input-base" />
+                  <textarea placeholder="Attribution text" value={uploadForm.attributionText}
+                    onChange={(event) => setUploadForm({ ...uploadForm, attributionText: event.target.value })}
+                    className="input-base resize-none" rows={2} />
+                  <textarea placeholder="Rights notes / proof summary" value={uploadForm.rightsSummary}
+                    onChange={(event) => setUploadForm({ ...uploadForm, rightsSummary: event.target.value })}
+                    className="input-base resize-none" rows={2} />
+                </div>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <label className="flex items-start gap-2 rounded-xl p-3 cursor-pointer" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                    <input type="checkbox" checked={uploadForm.requiresAttribution}
+                      onChange={(event) => setUploadForm({ ...uploadForm, requiresAttribution: event.target.checked })}
+                      className="mt-1 h-4 w-4 rounded" />
+                    <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Show attribution for this PDF in NovelHub.</span>
+                  </label>
+                  <label className="flex items-start gap-2 rounded-xl p-3 cursor-pointer" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                    <input type="checkbox" checked={uploadForm.rightsConfirmed}
+                      onChange={(event) => setUploadForm({ ...uploadForm, rightsConfirmed: event.target.checked })}
+                      className="mt-1 h-4 w-4 rounded" />
+                    <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
+                      I confirm this PDF is legal to publish on NendPlay. *
+                    </span>
+                  </label>
+                </div>
+              </section>
+
               <div className="flex gap-3">
                 <button type="button" onClick={() => setShowUpload(false)} className="btn-ghost flex-1">Cancel</button>
                 <button type="submit" disabled={uploading} className="btn-primary flex-1">
-                  {uploading ? 'Uploading...' : 'Upload'}
+                  {uploading ? 'Submitting...' : 'Submit for Review'}
                 </button>
               </div>
             </form>
