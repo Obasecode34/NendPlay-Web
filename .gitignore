@@ -3,6 +3,7 @@ dist/
 build/
 coverage/
 dist-check/
+dist-verify/
 *.log
 .env
 .env.local

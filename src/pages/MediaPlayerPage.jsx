@@ -97,7 +97,9 @@ export default function MediaPlayerPage() {
         setMedia(m)
         const playbackRes = await mediaService.getPlayback(id)
         const playback = playbackRes.data.data.playback
-        setPlaybackUrl(mediaService.resolveStreamUrl(playback.streamUrl))
+        const nextPlaybackUrl = mediaService.resolveStreamUrl(playback.streamUrl)
+        if (!nextPlaybackUrl) throw new Error('Missing playback URL')
+        setPlaybackUrl(nextPlaybackUrl)
         setPlaybackSourceType(playback.sourceType || '')
         setPlaybackAttempt((value) => value + 1)
       }
@@ -113,6 +115,10 @@ export default function MediaPlayerPage() {
     setShowControls(true)
     clearTimeout(controlsTimer.current)
     controlsTimer.current = setTimeout(() => setShowControls(false), 3000)
+  }
+
+  const stopPlayerEvent = (event) => {
+    event.stopPropagation()
   }
 
   const toggleControls = () => {
@@ -297,7 +303,7 @@ export default function MediaPlayerPage() {
 
   if (!media) return null
 
-  const streamUrl = playbackUrl || mediaService.resolveStreamUrl(mediaService.getStreamUrl(id))
+  const streamUrl = playbackUrl
   const thumbnailUrl = mediaService.getThumbnailUrl?.(media) || media.thumbnailUrl || ''
   const genreText = Array.isArray(media.genres) && media.genres.length
     ? media.genres.slice(0, 3).join(', ')
@@ -335,47 +341,62 @@ export default function MediaPlayerPage() {
           <div
             className="relative aspect-video max-h-[620px] cursor-pointer bg-black"
             onMouseMove={handleMouseMove}
-            onWheel={handlePlayerWheel}
-            onClick={toggleControls}>
-            <ReactPlayer
-              key={`${id}-${playbackAttempt}`}
-              ref={playerRef}
-              url={streamUrl}
-              playing={playing}
-              volume={muted ? 0 : volume}
-              width="100%"
-              height="100%"
-              onProgress={({ playedSeconds, played }) => {
-                setPlayed(played)
-                setProgress(playedSeconds)
-                upsertContinueWatching(media, { played, playedSeconds, duration })
-              }}
-              onDuration={(d) => { setLocalDuration(d); setDuration(d) }}
-              onEnded={() => {
-                addWatchHistory(media, { duration })
-                removeContinueWatching(id)
-                if (autoPlayNext && nextUp?._id && nextUp._id !== id) navigate(`/watch/${nextUp._id}`)
-              }}
-              onReady={() => { playbackRetryCount.current = 0 }}
-              onError={handlePlaybackError}
-              config={{
-                file: {
-                  forceHLS: playbackSourceType === 'hls' || streamUrl.includes('.m3u8') || streamUrl.includes('/hls'),
-                  attributes: {
-                    controlsList: 'nodownload',
-                    playsInline: true,
+            onWheel={handlePlayerWheel}>
+            {streamUrl ? (
+              <ReactPlayer
+                key={`${id}-${playbackAttempt}`}
+                ref={playerRef}
+                url={streamUrl}
+                playing={playing}
+                volume={muted ? 0 : volume}
+                width="100%"
+                height="100%"
+                onProgress={({ playedSeconds, played }) => {
+                  setPlayed(played)
+                  setProgress(playedSeconds)
+                  upsertContinueWatching(media, { played, playedSeconds, duration })
+                }}
+                onDuration={(d) => { setLocalDuration(d); setDuration(d) }}
+                onEnded={() => {
+                  addWatchHistory(media, { duration })
+                  removeContinueWatching(id)
+                  if (autoPlayNext && nextUp?._id && nextUp._id !== id) navigate(`/watch/${nextUp._id}`)
+                }}
+                onReady={() => { playbackRetryCount.current = 0 }}
+                onError={handlePlaybackError}
+                config={{
+                  file: {
+                    forceHLS: playbackSourceType === 'hls' || streamUrl.includes('.m3u8') || streamUrl.includes('/hls'),
+                    attributes: {
+                      controlsList: 'nodownload',
+                      playsInline: true,
+                    },
                   },
-                },
-              }}
-            />
+                }}
+              />
+            ) : (
+              <div className="flex h-full min-h-[260px] items-center justify-center text-sm font-black text-white/70">
+                Loading playback...
+              </div>
+            )}
 
             <div
               className="pointer-events-none absolute inset-0"
               style={{ background: `rgba(0,0,0,${Math.max(0, (1 - brightness) * 0.45)})` }}
             />
 
+            <button
+              type="button"
+              aria-label={showControls ? 'Hide playback controls' : 'Show playback controls'}
+              className="absolute inset-0 z-10 cursor-pointer bg-transparent"
+              onClick={(event) => {
+                event.stopPropagation()
+                toggleControls()
+              }}
+            />
+
             <div
-              className={`absolute inset-0 flex flex-col justify-between bg-black/30 p-5 transition-opacity duration-300 ${showControls ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
+              className={`absolute inset-0 z-20 flex flex-col justify-between bg-black/30 p-5 transition-opacity duration-300 ${showControls ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
               onClick={(e) => {
                 e.stopPropagation()
                 if (e.target === e.currentTarget) toggleControls()
@@ -401,6 +422,7 @@ export default function MediaPlayerPage() {
                       setVolume(parseFloat(e.target.value))
                       flashEdgeControl('volume')
                     }}
+                    onClick={stopPlayerEvent}
                     className="h-24 w-1 rotate-[-90deg] accent-purple-500"
                   />
                   <span className="text-[10px]">Volume</span>
@@ -429,6 +451,7 @@ export default function MediaPlayerPage() {
                       setPlayed(val)
                       playerRef.current?.seekTo(val)
                     }}
+                    onClick={stopPlayerEvent}
                     className="h-1 flex-1 cursor-pointer accent-purple-500"
                   />
                   <span>{formatTime(duration)}</span>
