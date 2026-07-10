@@ -15,7 +15,7 @@ import {
 } from 'react-icons/ri'
 import { useInView } from 'react-intersection-observer'
 import toast from 'react-hot-toast'
-import { mediaService, novelService } from '../services/index'
+import { mediaService, newsService, novelService } from '../services/index'
 import MediaRow from '../components/media/MediaRow'
 import GoogleAdSlot from '../components/ads/GoogleAdSlot'
 import NendPlayAdSlot from '../components/ads/NendPlayAdSlot'
@@ -319,15 +319,32 @@ function NovelCard({ item, onClick }) {
   )
 }
 
-function NewsMiniCard({ title, label, image }) {
+function getNewsTitle(article) {
+  return article?.header || article?.title || 'NendPlay News'
+}
+
+function getNewsImage(article) {
+  return article?.imageUrl || article?.thumbnailUrl || article?.mediaFiles?.find((item) => item.type === 'image')?.url || ''
+}
+
+function getNewsLabel(article) {
+  const source = article?.source || (article?.kind === 'nendplay' ? 'NendPlay News' : 'News')
+  const category = article?.category || article?.categories?.[0] || 'Top Stories'
+  return `${source} - ${category}`
+}
+
+function NewsMiniCard({ article, title, label, image, onClick }) {
+  const resolvedTitle = article ? getNewsTitle(article) : title
+  const resolvedLabel = article ? getNewsLabel(article) : label
+  const resolvedImage = article ? getNewsImage(article) : image
   return (
-    <button type="button" className="flex w-full gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-left transition-colors hover:bg-white/[0.08]">
+    <button type="button" onClick={onClick} className="flex w-full gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-left transition-colors hover:bg-white/[0.08]">
       <div className="h-16 w-20 flex-none overflow-hidden rounded-lg bg-white/10">
-        {image ? <img src={image} alt={title} className="h-full w-full object-cover" /> : <ImageFallback title="" />}
+        {resolvedImage ? <img src={resolvedImage} alt={resolvedTitle} className="h-full w-full object-cover" /> : <ImageFallback title="" />}
       </div>
       <div className="min-w-0">
-        <p className="line-clamp-2 text-sm font-bold text-white">{title}</p>
-        <p className="mt-1 text-xs text-white/55">{label}</p>
+        <p className="line-clamp-2 text-sm font-bold text-white">{resolvedTitle}</p>
+        <p className="mt-1 line-clamp-1 text-xs text-white/55">{resolvedLabel}</p>
       </div>
     </button>
   )
@@ -351,6 +368,8 @@ export default function HomePage() {
   const [loadingMoreSearch, setLoadingMoreSearch] = useState(false)
   const [featuredItems, setFeaturedItems] = useState([])
   const [featuredIndex, setFeaturedIndex] = useState(0)
+  const [newsHighlights, setNewsHighlights] = useState([])
+  const [newsHighlightSeed, setNewsHighlightSeed] = useState(Date.now())
   const [shuffleSeed, setShuffleSeed] = useState(Date.now())
   const [activeHomeTab, setActiveHomeTab] = useState('All')
   const [activeCategory, setActiveCategory] = useState(HOME_CATEGORIES[0])
@@ -360,6 +379,27 @@ export default function HomePage() {
   const navigateMedia = (media) => {
     if (isShortMedia(media)) navigate(`/shorts?open=${media._id}`)
     else navigate(`/watch/${media._id}`)
+  }
+
+  const openNewsHighlight = (article) => {
+    if (!article) return
+    if (article.kind === 'nendplay' || article._id) {
+      navigate(`/news/${article._id || article.id}`)
+      return
+    }
+    if (article.url) window.open(article.url, '_blank', 'noopener,noreferrer')
+    else navigate('/news')
+  }
+
+  const fetchNewsHighlights = async () => {
+    try {
+      const res = await newsService.getDailyNews({ section: 'news', tab: 'for-you', limit: 12, page: 1 })
+      const articles = res.data?.data?.articles || []
+      setNewsHighlights(shuffleItems(articles, Date.now()).slice(0, 4))
+      setNewsHighlightSeed(Date.now())
+    } catch {
+      setNewsHighlights([])
+    }
   }
 
   const fetchContent = async (pageToLoad = 1, append = false) => {
@@ -423,6 +463,13 @@ export default function HomePage() {
   }, [searchQuery])
 
   useEffect(() => {
+    if (searchQuery) return undefined
+    fetchNewsHighlights()
+    const timer = setInterval(fetchNewsHighlights, 180000)
+    return () => clearInterval(timer)
+  }, [searchQuery])
+
+  useEffect(() => {
     if (!loadMoreInView || loading) return
     if (searchQuery) loadMoreSearch()
     else loadMoreHomeMedia()
@@ -462,12 +509,9 @@ export default function HomePage() {
   const musicItems = allMedia.filter((item) => ['music', 'audio'].includes(item.type)).slice(0, 12)
   const hero = featuredItems[featuredIndex] || rankedMedia[0]
   const heroImage = hero ? getMediaImage(hero) : ''
-  const newsHighlights = [
-    ['Global Leaders Meet for Peace Summit', '2h ago'],
-    ['Tech Innovation Changing the World', '5h ago'],
-    ['Sports Update: Local Team Wins Again', '1h ago'],
-    ['Economy Shows Signs of Recovery', '3h ago'],
-  ]
+  const visibleNewsHighlights = useMemo(() => (
+    shuffleItems(newsHighlights, newsHighlightSeed).slice(0, 4)
+  ), [newsHighlights, newsHighlightSeed])
 
   const openTab = (tab) => {
     if (tab.route) {
@@ -615,7 +659,18 @@ export default function HomePage() {
       <section className="mb-7">
         <SectionHeader title="News Highlights" onSeeAll={() => navigate('/news')} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {newsHighlights.map(([title, label]) => <NewsMiniCard key={title} title={title} label={label} />)}
+          {visibleNewsHighlights.length > 0
+            ? visibleNewsHighlights.map((article) => (
+              <NewsMiniCard
+                key={article._id || article.id || article.url}
+                article={article}
+                onClick={() => openNewsHighlight(article)}
+              />
+            ))
+            : ['Global live briefing', 'Nigeria today', 'Technology digest', 'Sports pulse'].map((title) => (
+              <NewsMiniCard key={title} title={title} label="NendPlay News" onClick={() => navigate('/news')} />
+            ))
+          }
         </div>
       </section>
 
