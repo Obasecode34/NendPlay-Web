@@ -57,7 +57,7 @@ const LICENSE_TYPES = [
 ]
 
 const CONTENT_ORIGIN_OPTIONS = [
-  { value: 'creator_upload', label: 'Creator / author upload', helper: 'I own this PDF or have direct permission to publish it.' },
+  { value: 'creator_upload', label: 'Creator / author upload', helper: 'I own this document or have direct permission to publish it.' },
   { value: 'public_domain', label: 'Public domain import', helper: 'A legal public-domain source such as Gutenberg or government libraries.' },
   { value: 'creative_commons', label: 'Creative Commons import', helper: 'A CC-licensed source with attribution and license details.' },
 ]
@@ -87,16 +87,54 @@ const INITIAL_UPLOAD_FORM = {
   thumbnailFile: null,
 }
 
+const DOCUMENT_ACCEPT = [
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.txt',
+  '.odt',
+  '.ods',
+  '.epub',
+  '.xls',
+  '.xlsx',
+  '.mobi',
+  '.rtf',
+  '.ppt',
+  '.pptx',
+  '.csv',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.oasis.opendocument.text',
+  'text/plain',
+  'application/epub+zip',
+  'application/x-mobipocket-ebook',
+  'application/vnd.amazon.ebook',
+  'application/rtf',
+  'text/rtf',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'text/csv',
+].join(',')
+
 const OFFICE_TYPES = {
   pdf: 'PDF',
   txt: 'Text',
   csv: 'CSV',
   doc: 'Word',
   docx: 'Word',
+  odt: 'OpenDocument Text',
   ppt: 'PowerPoint',
   pptx: 'PowerPoint',
   xls: 'Excel',
   xlsx: 'Excel',
+  ods: 'OpenDocument Sheet',
+  epub: 'EPUB',
+  mobi: 'MOBI',
+  rtf: 'RTF',
 }
 
 function normalizeGenre(value = '') {
@@ -172,7 +210,7 @@ function OfficeWorkspace() {
           <div>
             <h2 className="font-display text-2xl font-black" style={{ color: 'var(--color-text)' }}>NendPlay Office</h2>
             <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              PDF, Word, Excel, PowerPoint, TXT and CSV workspace.
+              PDF, Word, Excel, PowerPoint, TXT, ODT, ODS, EPUB, MOBI, RTF and CSV workspace.
             </p>
           </div>
           <label className="btn-primary inline-flex cursor-pointer items-center justify-center gap-2">
@@ -181,7 +219,7 @@ function OfficeWorkspace() {
               type="file"
               multiple
               className="hidden"
-              accept=".pdf,.txt,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx,application/pdf,text/*"
+              accept={DOCUMENT_ACCEPT}
               onChange={pickFiles}
             />
           </label>
@@ -236,7 +274,7 @@ function OfficeWorkspace() {
                 <RiFileTextLine className="mb-3 text-5xl" style={{ color: 'var(--color-text-muted)' }} />
                 <p className="font-display text-xl font-bold" style={{ color: 'var(--color-text)' }}>Preview ready</p>
                 <p className="mt-2 max-w-md text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                  Select a PDF, TXT or CSV file to preview. Office files stay listed and can be opened in a compatible desktop app.
+                  Select a PDF, TXT or CSV file to preview. Other office and ebook files stay listed and can be opened in a compatible desktop app.
                 </p>
               </div>
             ) : canPreview ? (
@@ -289,7 +327,7 @@ export default function NovelHubPage() {
     if (append) setLoadingMore(true)
     else setLoading(true)
     try {
-      const params = { limit: DOCUMENT_PAGE_LIMIT, page: pageToLoad, fileType: 'pdf' }
+      const params = { limit: DOCUMENT_PAGE_LIMIT, page: pageToLoad }
       if (search) params.search = search
       if (genre !== 'all') params.category = genre
       const res = await novelService.getAll(params)
@@ -318,15 +356,15 @@ export default function NovelHubPage() {
   const handleUpload = async (event) => {
     event.preventDefault()
     if (!uploadForm.file || !uploadForm.title || !uploadForm.author || !uploadForm.category || !uploadForm.language) {
-      toast.error('Provide title, author, category, language, and PDF file')
+      toast.error('Provide title, author, category, language, and document file')
       return
     }
     if (!uploadForm.rightsConfirmed) {
-      toast.error('Confirm that you own this PDF or have legal permission to publish it')
+      toast.error('Confirm that you own this document or have legal permission to publish it')
       return
     }
     if ((uploadForm.contentOrigin === 'public_domain' || uploadForm.contentOrigin === 'creative_commons' || uploadForm.licenseType.startsWith('cc_') || uploadForm.licenseType === 'public_domain') && !uploadForm.sourceUrl) {
-      toast.error('Public-domain and Creative Commons PDFs need a source URL')
+      toast.error('Public-domain and Creative Commons documents need a source URL')
       return
     }
     setUploading(true)
@@ -351,7 +389,7 @@ export default function NovelHubPage() {
       formData.append('requiresAttribution', uploadForm.requiresAttribution.toString())
       formData.append('rightsConfirmed', uploadForm.rightsConfirmed.toString())
       await novelService.upload(formData)
-      toast.success('PDF submitted for NovelHub review')
+      toast.success('Document submitted for NovelHub review')
       setShowUpload(false)
       setUploadForm(INITIAL_UPLOAD_FORM)
       fetchDocuments(1, false)
@@ -390,11 +428,11 @@ export default function NovelHubPage() {
         storageKey: cachedFile.storageKey,
         storedFileSize: cachedFile.storedFileSize || doc.fileSize || res.data.data.fileSize || 0,
         snapshot: {
-          title: doc.title || res.data.data.title || 'PDF document',
+          title: doc.title || res.data.data.title || 'Document',
           thumbnailUrl: doc.thumbnailUrl || '',
-          type: doc.fileType || 'pdf',
+          type: doc.fileType || 'document',
           category: doc.category || doc.genre || '',
-          mimeType: doc.mimeType || res.data.data.mimeType || 'application/pdf',
+          mimeType: doc.mimeType || res.data.data.mimeType || 'application/octet-stream',
           fileUrl,
           licenseType: doc.licenseType || 'unknown',
           sourceName: doc.sourceName || '',
@@ -412,7 +450,7 @@ export default function NovelHubPage() {
           })
         } catch {}
       }
-      toast.success('Full PDF saved to NovelHub Downloads')
+      toast.success('Full document saved to NovelHub Downloads')
       setSelectedPdf(null)
       setActiveTopTab('downloads')
     } catch {
@@ -432,7 +470,7 @@ export default function NovelHubPage() {
       const res = await novelService.download(doc._id)
       const url = res.data.data.fileUrl
       await navigator.clipboard.writeText(`${doc.title} - ${url}`)
-      toast.success('PDF link copied')
+      toast.success('Document link copied')
     } catch {
       toast.error('Unable to prepare share link')
     }
@@ -493,7 +531,7 @@ export default function NovelHubPage() {
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <RiBookOpenLine className="mb-4 text-5xl" style={{ color: 'var(--color-text-muted)' }} />
           <p className="font-display text-xl font-bold" style={{ color: 'var(--color-text)' }}>No documents found</p>
-          <p className="mt-2 text-sm" style={{ color: 'var(--color-text-muted)' }}>Upload PDFs by genre to build the NovelHub catalog.</p>
+          <p className="mt-2 text-sm" style={{ color: 'var(--color-text-muted)' }}>Upload documents by genre to build the NovelHub catalog.</p>
         </div>
       )
     }
@@ -566,7 +604,7 @@ export default function NovelHubPage() {
                   <div className="min-w-0 pt-3">
                     <p className="text-xl font-black line-clamp-2" style={{ color: 'var(--color-text)' }}>{doc.title}</p>
                     <p className="mt-2 text-sm line-clamp-2" style={{ color: 'var(--color-text-muted)' }}>
-                      {doc.description || doc.author || 'PDF document available in NovelHub.'}
+                      {doc.description || doc.author || 'Document available in NovelHub.'}
                     </p>
                     <span className="mt-3 inline-block rounded-md bg-emerald-500/20 px-2 py-1 text-xs font-black text-emerald-300">
                       {docGenre.label}
@@ -592,7 +630,7 @@ export default function NovelHubPage() {
           <div>
             <h1 className="font-display text-3xl font-bold gradient-text">NovelHub</h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              Read, upload, download and share PDF novels by genre.
+              Read, upload, download and share novels and documents by genre.
             </p>
           </div>
           {activeTopTab === 'novels' && isAuthenticated && (
@@ -627,7 +665,7 @@ export default function NovelHubPage() {
               <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
               <input
                 type="text"
-                placeholder="Search PDF novels, authors, genres..."
+                placeholder="Search novels, documents, authors, genres..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 className="input-base pl-10 py-2.5"
@@ -675,7 +713,7 @@ export default function NovelHubPage() {
               <div className="rounded-2xl p-5" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                 <h3 className="mb-3 font-display text-2xl font-black" style={{ color: 'var(--color-text)' }}>Chapter One</h3>
                 <p className="whitespace-pre-line text-sm leading-7" style={{ color: 'var(--color-text)' }}>
-                  {selectedPdf.description || `${selectedPdf.title} begins here. Download the PDF to continue reading the complete document from chapter two onward.`}
+                  {selectedPdf.description || `${selectedPdf.title} begins here. Download the document to continue reading the complete file from chapter two onward.`}
                   {selectedPdf.author ? `\n\nAuthor: ${selectedPdf.author}` : ''}
                 </p>
                 {(selectedPdf.licenseType && selectedPdf.licenseType !== 'unknown') || selectedPdf.sourceName || selectedPdf.attributionText ? (
@@ -697,10 +735,10 @@ export default function NovelHubPage() {
                 <RiLockLine className="mx-auto mb-3 text-4xl" style={{ color: 'var(--color-primary)' }} />
                 <h3 className="font-display text-xl font-black" style={{ color: 'var(--color-text)' }}>Chapter Two is locked</h3>
                 <p className="mx-auto mt-2 max-w-lg text-sm leading-6" style={{ color: 'var(--color-text-muted)' }}>
-                  Download this PDF to unlock full read-only access in the NovelHub Downloads tab. Downloaded PDFs can be opened offline.
+                  Download this document to unlock full read-only access in the NovelHub Downloads tab. Downloaded files can be opened offline.
                 </p>
                 <button onClick={() => handleDownload(selectedPdf)} className="btn-primary mt-5 inline-flex items-center gap-2">
-                  <RiDownloadLine /> Download Full PDF
+                  <RiDownloadLine /> Download Full Document
                 </button>
               </div>
             </div>
@@ -715,7 +753,7 @@ export default function NovelHubPage() {
             style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="font-display text-xl font-bold" style={{ color: 'var(--color-text)' }}>Upload NovelHub PDF</h2>
+                <h2 className="font-display text-xl font-bold" style={{ color: 'var(--color-text)' }}>Upload NovelHub Document</h2>
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
                   Add the document, cover image, reading category, and rights information required for admin review.
                 </p>
@@ -732,9 +770,9 @@ export default function NovelHubPage() {
                   <RiUploadLine className="mb-3 text-2xl" style={{ color: 'var(--color-primary)' }} />
                   <p className="text-sm font-black" style={{ color: 'var(--color-text)' }}>Document file *</p>
                   <p className="mt-1 text-xs leading-5" style={{ color: 'var(--color-text-muted)' }}>
-                    {uploadForm.file ? uploadForm.file.name : 'Select a PDF file. NovelHub PDF uploads are reviewed before publishing.'}
+                    {uploadForm.file ? uploadForm.file.name : 'Select a supported document. NovelHub uploads are reviewed before publishing.'}
                   </p>
-                  <input id="doc-file" type="file" className="hidden" accept=".pdf,application/pdf"
+                  <input id="doc-file" type="file" className="hidden" accept={DOCUMENT_ACCEPT}
                     onChange={(event) => setUploadForm({ ...uploadForm, file: event.target.files?.[0] || null })} />
                 </button>
 
@@ -785,7 +823,7 @@ export default function NovelHubPage() {
                   <div>
                     <p className="text-sm font-black" style={{ color: 'var(--color-text)' }}>Rights, license, and source</p>
                     <p className="mt-1 text-xs leading-5" style={{ color: 'var(--color-text-muted)' }}>
-                      Store proof of ownership, public-domain status, or Creative Commons license before the PDF can go public.
+                      Store proof of ownership, public-domain status, or Creative Commons license before the document can go public.
                     </p>
                   </div>
                 </div>
@@ -834,14 +872,14 @@ export default function NovelHubPage() {
                     <input type="checkbox" checked={uploadForm.requiresAttribution}
                       onChange={(event) => setUploadForm({ ...uploadForm, requiresAttribution: event.target.checked })}
                       className="mt-1 h-4 w-4 rounded" />
-                    <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Show attribution for this PDF in NovelHub.</span>
+                    <span className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Show attribution for this document in NovelHub.</span>
                   </label>
                   <label className="flex items-start gap-2 rounded-xl p-3 cursor-pointer" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
                     <input type="checkbox" checked={uploadForm.rightsConfirmed}
                       onChange={(event) => setUploadForm({ ...uploadForm, rightsConfirmed: event.target.checked })}
                       className="mt-1 h-4 w-4 rounded" />
                     <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
-                      I confirm this PDF is legal to publish on NendPlay. *
+                      I confirm this document is legal to publish on NendPlay. *
                     </span>
                   </label>
                 </div>
