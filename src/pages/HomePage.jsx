@@ -699,6 +699,10 @@ export default function HomePage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
               {section.items.slice(0, 18).map((item) => <PosterCard key={item._id} item={item} onClick={navigateMedia} />)}
             </div>
+            <div className="mt-5">
+              <GoogleAdSlot placement="home" />
+              <NendPlayAdSlot placement="home" className="mt-3" />
+            </div>
           </section>
         ))}
       </div>

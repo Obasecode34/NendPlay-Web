@@ -30,6 +30,21 @@ function getCollectionLabel(item) {
   return item.title
 }
 
+function normalizeLabel(value = '') {
+  return String(value).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+function getMediaLabels(item = {}) {
+  return [
+    ...(Array.isArray(item.genres) ? item.genres : []),
+    ...(Array.isArray(item.categories) ? item.categories : []),
+    ...(Array.isArray(item.navigationLabels) ? item.navigationLabels : []),
+    item.genre,
+    item.category,
+    item.type,
+  ].filter(Boolean).flatMap((value) => String(value).split(',')).map(normalizeLabel).filter(Boolean)
+}
+
 export default function MediaPlayerPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -57,6 +72,7 @@ export default function MediaPlayerPage() {
   const [showControls, setShowControls] = useState(true)
   const [activeInfoTab, setActiveInfoTab] = useState('overview')
   const [autoPlayNext, setAutoPlayNext] = useState(true)
+  const [overviewExpanded, setOverviewExpanded] = useState(false)
   const controlsTimer = useRef(null)
   const edgeTimer = useRef(null)
   const playbackRetryTimer = useRef(null)
@@ -90,9 +106,22 @@ export default function MediaPlayerPage() {
         || new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
       )))
 
-      // Load related content
-      const relRes = await mediaService.getAll({ type: m.type, limit: 10 })
-      setRelated(relRes.data.data.media.filter(r => r._id !== id))
+      try {
+        const relRes = await mediaService.getAll({ type: m.type, limit: 80 })
+        const currentLabels = new Set(getMediaLabels(m))
+        const relatedMedia = (relRes.data.data.media || [])
+          .filter((item) => item._id !== id)
+          .map((item) => ({
+            item,
+            score: getMediaLabels(item).reduce((count, label) => count + (currentLabels.has(label) ? 1 : 0), 0),
+          }))
+          .filter(({ score }) => score > 0)
+          .sort((a, b) => b.score - a.score)
+          .map(({ item }) => item)
+        setRelated(relatedMedia)
+      } catch {
+        setRelated([])
+      }
 
       if (!isLocked) {
         setMedia(m)
@@ -320,6 +349,8 @@ export default function MediaPlayerPage() {
     : media.artist || 'NendPlay Creators'
   const nextUp = collectionItems.find((item) => item._id !== id) || collectionItems[0]
   const moreLikeThis = related.length ? related.slice(0, 8) : collectionItems.filter((item) => item._id !== id).slice(0, 8)
+  const overviewText = media.description || 'No overview has been added for this media yet.'
+  const canToggleOverview = overviewText.length > 110
 
   return (
     <div className="animate-fade-in">
@@ -525,9 +556,24 @@ export default function MediaPlayerPage() {
 
         {activeInfoTab === 'overview' && (
           <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_320px]">
-            <p className="text-sm leading-7" style={{ color: 'var(--color-text-muted)' }}>
-              {media.description || 'No overview has been added for this media yet.'}
-            </p>
+            <div>
+              <p
+                className={`text-sm leading-7 ${overviewExpanded ? '' : 'line-clamp-1'}`}
+                style={{ color: 'var(--color-text-muted)' }}
+              >
+                {overviewText}
+              </p>
+              {canToggleOverview && (
+                <button
+                  type="button"
+                  onClick={() => setOverviewExpanded((value) => !value)}
+                  className="mt-1 text-sm font-black"
+                  style={{ color: 'var(--color-primary)' }}
+                >
+                  {overviewExpanded ? 'View less' : 'Read more'}
+                </button>
+              )}
+            </div>
             <div className="space-y-3 border-l pl-5 text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
               <p><b className="text-white">Director</b> {media.director || 'NendPlay Studios'}</p>
               <p><b className="text-white">Cast</b> {castText}</p>
@@ -558,8 +604,27 @@ export default function MediaPlayerPage() {
         )}
 
         {activeInfoTab === 'related' && (
-          <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-6">
-            {moreLikeThis.map((item) => <MediaCard key={item._id} media={item} size="full" />)}
+          <div className="mt-5 space-y-6">
+            {nextUp && nextUp._id !== id && (
+              <div>
+                <h3 className="mb-3 text-lg font-black text-white">Next Up</h3>
+                <button onClick={() => navigate(`/watch/${nextUp._id}`)} className="flex w-full gap-4 rounded-2xl p-3 text-left md:max-w-xl" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                  <div className="aspect-video w-40 overflow-hidden rounded-xl bg-black/40">
+                    {(mediaService.getThumbnailUrl?.(nextUp) || nextUp.thumbnailUrl) ? <img src={mediaService.getThumbnailUrl?.(nextUp) || nextUp.thumbnailUrl} alt="" className="h-full w-full object-cover" /> : null}
+                  </div>
+                  <div>
+                    <p className="font-black text-white">{nextUp.title}</p>
+                    <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{getCollectionLabel(nextUp)}</p>
+                  </div>
+                </button>
+              </div>
+            )}
+            <div>
+              <h3 className="mb-3 text-lg font-black text-white">More Like This</h3>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-6">
+                {moreLikeThis.map((item) => <MediaCard key={item._id} media={item} size="full" />)}
+              </div>
+            </div>
           </div>
         )}
 
