@@ -102,6 +102,7 @@ function getJobMeta(article = {}) {
     experience: article.experience || article.yearsExperience || article.subHeader || '2 - 4 years',
     deadline: formatDate(deadlineValue),
     category: formatCategoryLabel(getArticleCategory(article)),
+    summary: article.subHeader || article.summary || 'Open this job for full details.',
     requirements: getJobRequirements(article),
     appliedCount: article.appliedCount || article.applicationCount || 120,
   }
@@ -242,15 +243,8 @@ function JobCard({ article, onOpen }) {
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-black text-purple-700">Requirements</p>
-          <ul className="space-y-2 text-sm font-medium text-slate-700">
-            {job.requirements.slice(0, 3).map((requirement, index) => (
-              <li key={`${requirement}-${index}`} className="flex gap-2">
-                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-purple-700" />
-                <span className="line-clamp-1">{requirement}</span>
-              </li>
-            ))}
-          </ul>
+          <p className="mb-2 text-sm font-black text-purple-700">Short Summary</p>
+          <p className="line-clamp-3 text-sm font-medium leading-6 text-slate-700">{job.summary}</p>
         </div>
 
         <div className="rounded-2xl border border-dashed border-purple-300 bg-purple-50/50 p-4">

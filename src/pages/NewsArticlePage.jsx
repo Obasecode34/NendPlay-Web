@@ -5,7 +5,7 @@ import {
   RiArrowLeftLine, RiBookmarkLine, RiBookOpenLine, RiBriefcase4Line, RiCalendarLine,
   RiChat3Line, RiCheckboxCircleFill, RiExternalLinkLine, RiEyeLine, RiFireLine, RiGiftLine,
   RiGlobalLine, RiHeadphoneLine, RiHeartLine, RiHomeHeartLine, RiLineChartLine,
-  RiMapPin2Line, RiMegaphoneLine, RiMoneyDollarCircleLine, RiMore2Fill, RiPlayFill,
+  RiMapPin2Line, RiMoneyDollarCircleLine, RiMore2Fill, RiPlayFill,
   RiSearchLine, RiSendPlaneFill, RiShareForwardLine, RiShieldCheckLine, RiSuitcaseLine,
   RiTeamLine, RiTimeLine,
 } from 'react-icons/ri'
@@ -13,6 +13,7 @@ import ReactPlayer from 'react-player'
 import { newsService } from '../services'
 import useAuthStore from '../stores/authStore'
 import { InArticleAd, MultiplexAd } from '../components/ads/GoogleAdSlot'
+import NendPlayAdSlot from '../components/ads/NendPlayAdSlot'
 
 function timeAgo(value) {
   if (!value) return 'Today'
@@ -81,6 +82,10 @@ function getJobRequirements(post = {}) {
   return [post.subHeader || 'Relevant experience and strong communication skills required.']
 }
 
+function getJobSummary(post = {}) {
+  return post.body || post.jobSummary || post.summary || post.subHeader || 'Full job details will be provided by the hiring team.'
+}
+
 function getJobResponsibilities(post = {}) {
   const lines = getJobLines(post)
   if (Array.isArray(post.responsibilities) && post.responsibilities.length) return post.responsibilities
@@ -92,18 +97,13 @@ function getJobResponsibilities(post = {}) {
   ]
 }
 
-function getJobBenefits() {
-  return [
-    { label: 'Health Insurance', icon: RiShieldCheckLine },
-    { label: 'Remote Work', icon: RiHomeHeartLine },
-    { label: 'Paid Leave', icon: RiCalendarLine },
-    { label: 'Career Growth', icon: RiLineChartLine },
-    { label: 'Pension Plan', icon: RiTeamLine },
-  ]
+function getJobBenefits(post = {}) {
+  const icons = [RiShieldCheckLine, RiHomeHeartLine, RiCalendarLine, RiLineChartLine, RiTeamLine, RiGiftLine]
+  const benefits = Array.isArray(post.benefits) ? post.benefits.filter(Boolean) : []
+  return benefits.map((label, index) => ({ label, icon: icons[index % icons.length] }))
 }
 
 function getJobMeta(post = {}) {
-  const lines = getJobLines(post)
   const category = getCategory(post)
   return {
     company: post.company || post.source || 'NendPlay Media',
@@ -119,7 +119,7 @@ function getJobMeta(post = {}) {
     level: post.level || 'Mid-Level',
     urgency: post.urgency || 'Urgent',
     category,
-    summary: post.summary || post.jobSummary || post.subHeader || lines[0] || 'We are looking for a skilled and passionate professional to join our dynamic team.',
+    summary: getJobSummary(post),
     responsibilities: getJobResponsibilities(post),
     appliedCount: post.appliedCount || post.applicationCount || 120,
     applyEmail: post.applyEmail || post.contactEmail || 'careers@nendplaymedia.com',
@@ -195,6 +195,7 @@ export default function NewsArticlePage() {
   const [loading, setLoading] = useState(true)
   const [comment, setComment] = useState('')
   const [replyTarget, setReplyTarget] = useState(null)
+  const [adRefreshKey, setAdRefreshKey] = useState(() => Date.now())
 
   const videos = useMemo(() => (post?.mediaFiles || []).filter((item) => item.type === 'video'), [post])
   const audios = useMemo(() => (post?.mediaFiles || []).filter((item) => item.type === 'audio'), [post])
@@ -206,6 +207,11 @@ export default function NewsArticlePage() {
   useEffect(() => {
     loadPost()
   }, [id])
+
+  useEffect(() => {
+    const timer = setInterval(() => setAdRefreshKey(Date.now()), 120000)
+    return () => clearInterval(timer)
+  }, [])
 
   const loadPost = async () => {
     setLoading(true)
@@ -349,47 +355,42 @@ export default function NewsArticlePage() {
 
             <section className="mt-8">
               <h3 className="mb-3 flex items-center gap-3 text-2xl font-black"><RiBookOpenLine className="text-purple-700" /> Job Summary</h3>
-              <p className="max-w-4xl text-lg leading-8 text-slate-800">{job.summary}</p>
+              <p className="max-w-4xl whitespace-pre-line text-lg leading-8 text-slate-800">{job.summary}</p>
             </section>
 
-            <aside className="mt-8 overflow-hidden rounded-2xl border border-purple-100 bg-gradient-to-r from-purple-50 via-white to-purple-50 p-6">
-              <div className="grid gap-5 md:grid-cols-[1fr_240px] md:items-center">
-                <div>
-                  <p className="text-sm font-bold text-slate-500">Sponsored</p>
-                  <h3 className="mt-2 text-2xl font-black">Grow your brand with NendPlay Ads</h3>
-                  <p className="mt-2 max-w-xl font-semibold leading-7 text-slate-600">Reach thousands of professionals and talent on NendPlay.</p>
-                </div>
-                <button type="button" onClick={() => navigate('/advertise')} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-purple-700 px-6 py-4 font-black text-white">
-                  <RiMegaphoneLine /> Learn More
-                </button>
-              </div>
-            </aside>
+            <NendPlayAdSlot key={`career-nendplay-${adRefreshKey}`} placement="all" className="mt-8" />
 
             <section className="mt-8 border-t border-slate-100 pt-8">
               <h3 className="mb-4 flex items-center gap-3 text-2xl font-black"><RiBookOpenLine className="text-purple-700" /> Responsibilities</h3>
-              <ul className="space-y-2 text-base leading-7 text-slate-800 md:text-lg">
-                {job.responsibilities.map((item, index) => <li key={`${item}-${index}`}>• {item}</li>)}
-              </ul>
+              <div className="space-y-4 text-base leading-7 text-slate-800 md:text-lg">
+                {job.responsibilities.map((item, index) => <p key={`${item}-${index}`} className="whitespace-pre-line">{item}</p>)}
+              </div>
             </section>
+
+            <InArticleAd key={`career-responsibilities-ad-${adRefreshKey}`} placement="news" className="mt-8" />
 
             <section className="mt-8 border-t border-slate-100 pt-8">
               <h3 className="mb-4 flex items-center gap-3 text-2xl font-black"><RiCheckboxCircleFill className="text-purple-700" /> Requirements</h3>
-              <ul className="space-y-2 text-base leading-7 text-slate-800 md:text-lg">
-                {job.requirements.map((item, index) => <li key={`${item}-${index}`}>• {item}</li>)}
-              </ul>
-            </section>
-
-            <section className="mt-8 border-t border-slate-100 pt-8">
-              <h3 className="mb-4 flex items-center gap-3 text-2xl font-black"><RiGiftLine className="text-purple-700" /> Benefits</h3>
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-5">
-                {job.benefits.map(({ label, icon: Icon }) => (
-                  <div key={label} className="rounded-2xl border border-purple-100 bg-purple-50/60 p-4 text-center font-black text-slate-900">
-                    <Icon className="mx-auto mb-2 text-3xl text-purple-700" />
-                    {label}
-                  </div>
-                ))}
+              <div className="space-y-4 text-base leading-7 text-slate-800 md:text-lg">
+                {job.requirements.map((item, index) => <p key={`${item}-${index}`} className="whitespace-pre-line">{item}</p>)}
               </div>
             </section>
+
+            <InArticleAd key={`career-requirements-ad-${adRefreshKey}`} placement="news" className="mt-8" />
+
+            {job.benefits.length > 0 && (
+              <section className="mt-8 border-t border-slate-100 pt-8">
+                <h3 className="mb-4 flex items-center gap-3 text-2xl font-black"><RiGiftLine className="text-purple-700" /> Benefits</h3>
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-5">
+                  {job.benefits.map(({ label, icon: Icon }) => (
+                    <div key={label} className="rounded-2xl border border-purple-100 bg-purple-50/60 p-4 text-center font-black text-slate-900">
+                      <Icon className="mx-auto mb-2 text-3xl text-purple-700" />
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section className="mt-8 border-t border-slate-100 pt-8">
               <h3 className="mb-4 flex items-center gap-3 text-2xl font-black"><RiSendPlaneFill className="text-purple-700" /> How to Apply</h3>

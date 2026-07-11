@@ -130,10 +130,12 @@ const CAREER_CATEGORY_OPTIONS = [
 const JOB_TYPE_OPTIONS = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Temporary']
 const JOB_LEVEL_OPTIONS = ['Entry-Level', 'Mid-Level', 'Senior-Level', 'Manager', 'Director']
 const JOB_URGENCY_OPTIONS = ['Normal', 'Urgent', 'Featured']
-const DEFAULT_JOB_BENEFITS = ['Health Insurance', 'Remote Work', 'Paid Leave', 'Career Growth', 'Pension Plan']
-
 function listToInput(value) {
   return Array.isArray(value) ? value.join(', ') : value || ''
+}
+
+function listToParagraphInput(value) {
+  return Array.isArray(value) ? value.join('\n') : value || ''
 }
 
 function normalizeInputList(value) {
@@ -142,6 +144,14 @@ function normalizeInputList(value) {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 5)
+}
+
+function normalizeParagraphInputList(value, max = 12) {
+  return String(value || '')
+    .split(/\r?\n+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, max)
 }
 
 function normalizeGenrePinKey(value = '') {
@@ -1837,7 +1847,7 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
     applyUrl: 'https://nendplay.com/careers',
     responsibilities: '',
     requirements: '',
-    benefits: DEFAULT_JOB_BENEFITS.join(', '),
+    benefits: '',
     adsEnabled: true,
     status: 'published',
   }
@@ -1897,9 +1907,9 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
       urgency: article.urgency || 'Urgent',
       applyEmail: article.applyEmail || 'careers@nendplaymedia.com',
       applyUrl: article.applyUrl || 'https://nendplay.com/careers',
-      responsibilities: listToInput(article.responsibilities),
-      requirements: listToInput(article.requirements),
-      benefits: listToInput(article.benefits?.length ? article.benefits : DEFAULT_JOB_BENEFITS),
+      responsibilities: listToParagraphInput(article.responsibilities),
+      requirements: listToParagraphInput(article.requirements),
+      benefits: listToParagraphInput(article.benefits),
       adsEnabled: article.adsEnabled !== false,
       status: article.status || 'published',
     })
@@ -1908,31 +1918,16 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
   }
 
   const submitPost = async () => {
-    if (!postForm.header.trim() || !postForm.body.trim()) {
+    if (postForm.section !== 'career' && (!postForm.header.trim() || !postForm.body.trim())) {
       toast.error('Header and body text are required')
       return
     }
-    if (!postForm.categories.length) {
+    const selectedCategories = postForm.categories.length
+      ? postForm.categories
+      : [postForm.section === 'career' ? 'information technology' : 'headlines']
+    if (!selectedCategories.length) {
       toast.error('Choose at least one category')
       return
-    }
-    if (postForm.section === 'career') {
-      if (!postForm.company.trim() || !postForm.location.trim() || !postForm.salary.trim()) {
-        toast.error('Company, location, and salary are required for jobs')
-        return
-      }
-      if (!postForm.experience.trim() || !postForm.deadline) {
-        toast.error('Experience and application deadline are required for jobs')
-        return
-      }
-      if (!postForm.applyEmail.trim() && !postForm.applyUrl.trim()) {
-        toast.error('Add an application email or application link')
-        return
-      }
-      if (!postForm.requirements.trim() || !postForm.responsibilities.trim()) {
-        toast.error('Add job requirements and responsibilities')
-        return
-      }
     }
     if (selectedFileStats.videos > 5 || selectedFileStats.audio > 5 || selectedFileStats.pictures > 5) {
       toast.error('Choose up to 5 videos, 5 audio files, and 5 pictures')
@@ -1945,7 +1940,7 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
     data.append('jobMode', postForm.section === 'career' ? postForm.jobMode : '')
     data.append('subHeader', postForm.subHeader)
     data.append('body', postForm.body)
-    data.append('categories', postForm.categories.join(','))
+    data.append('categories', selectedCategories.join(','))
     data.append('adsEnabled', String(postForm.adsEnabled))
     data.append('status', postForm.status)
     if (postForm.section === 'career') {
@@ -2172,19 +2167,19 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
                 />
                 <textarea
                   className="input-base md:col-span-2 min-h-[100px]"
-                  placeholder="Responsibilities, separated by commas"
+                  placeholder="Responsibilities, one paragraph per line"
                   value={postForm.responsibilities}
                   onChange={(event) => setPostForm({ ...postForm, responsibilities: event.target.value })}
                 />
                 <textarea
                   className="input-base md:col-span-2 min-h-[100px]"
-                  placeholder="Requirements, separated by commas"
+                  placeholder="Requirements, one paragraph per line"
                   value={postForm.requirements}
                   onChange={(event) => setPostForm({ ...postForm, requirements: event.target.value })}
                 />
                 <textarea
                   className="input-base md:col-span-2 min-h-[80px]"
-                  placeholder="Benefits, separated by commas"
+                  placeholder="Benefits, one benefit per line"
                   value={postForm.benefits}
                   onChange={(event) => setPostForm({ ...postForm, benefits: event.target.value })}
                 />
@@ -2235,7 +2230,7 @@ function NewsPanel({ articles, meta, filters, setFilters, search, setSearch, onR
               <div className="mt-5 border-t pt-4" style={{ borderColor: '#ECE8F7' }}>
                 <p className="font-black mb-2" style={{ color: '#5B21B6' }}>Requirements</p>
                 <ul className="space-y-2 text-sm" style={{ color: '#20263A' }}>
-                  {(normalizeInputList(postForm.requirements).length ? normalizeInputList(postForm.requirements) : ['Requirement point one goes here.']).map((item) => (
+                  {(normalizeParagraphInputList(postForm.requirements).length ? normalizeParagraphInputList(postForm.requirements) : ['Requirement point one goes here.']).map((item) => (
                     <li key={item} className="flex gap-2"><span style={{ color: '#5B21B6' }}>•</span>{item}</li>
                   ))}
                 </ul>
