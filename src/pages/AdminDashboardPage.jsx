@@ -56,14 +56,14 @@ const badgeColors = {
 }
 
 const MEDIA_CATEGORY_OPTIONS = [
-  'All', 'Hollywood', 'Nollywood', 'Bollywood', 'Western', 'K-Drama',
+  'All', 'Education', 'Hollywood', 'Nollywood', 'Bollywood', 'Western', 'K-Drama',
   'Chinese Cinema', 'Hong Kong Cinema', 'Japanese Cinema', 'Australian Cinema', 'Philippine Cinema', 'European Cinema',
 ]
 const MEDIA_NAVIGATION_OPTIONS = ['Shorts', 'Trending', 'Movie', 'Anime', 'Cartoon', 'Sports', 'WWE']
 const MOVIE_GENRE_OPTIONS = [
   'Action', 'Adventure', 'Sports', 'Martial Arts', 'Comedy', 'Drama', 'Romance',
   'Horror', 'Mystery', 'Crime', 'Fantasy', 'Science Fiction', 'Animation',
-  'Family', 'Musical', 'Documentary', 'War', 'Western', 'Biography', 'WWE',
+  'Family', 'Musical', 'Documentary', 'War', 'Western', 'Biography', 'Education', 'WWE',
 ]
 const MEDIA_TYPE_OPTIONS = ['movie', 'video', 'music', 'tv_show', 'comedy', 'talk_show', 'podcast', 'short', 'live_event']
 const PUBLISH_STATUS_OPTIONS = ['draft', 'processing', 'pending_review', 'published', 'rejected', 'failed', 'archived']
@@ -844,6 +844,8 @@ export default function AdminDashboardPage() {
       title: row.title || '',
       description: row.description || '',
       type: row.type || 'video',
+      director: row.director || '',
+      cast: listToInput(row.cast),
       categories: listToInput(row.categories?.length ? row.categories : [row.category].filter(Boolean)),
       navigationLabels: listToInput(row.navigationLabels?.length ? row.navigationLabels : row.homeSections || []),
       genres: listToInput(row.genres?.length ? row.genres : [row.genre].filter(Boolean)),
@@ -889,6 +891,8 @@ export default function AdminDashboardPage() {
     const payload = {
       ...mediaEditForm,
       title: mediaEditForm.title.trim(),
+      director: mediaEditForm.director?.trim() || '',
+      cast: normalizeInputList(mediaEditForm.cast),
       categories,
       navigationLabels,
       genres,
@@ -1647,6 +1651,26 @@ function MediaEditModal({ media, form, setForm, thumbnailFile, setThumbnailFile,
           <div className="lg:col-span-2">
             <label className="block text-sm font-bold mb-2" style={{ color: 'var(--color-text-muted)' }}>Description</label>
             <textarea className="input-base min-h-28 resize-y" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--color-text-muted)' }}>Director</label>
+            <input
+              className="input-base"
+              value={form.director}
+              onChange={(event) => setForm({ ...form, director: event.target.value })}
+              placeholder="Example: NendPlay Studios"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--color-text-muted)' }}>Cast, max 5</label>
+            <input
+              className="input-base"
+              value={form.cast}
+              onChange={(event) => setForm({ ...form, cast: event.target.value })}
+              placeholder="Actor One, Actor Two"
+            />
           </div>
 
           <div>
