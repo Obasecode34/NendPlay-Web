@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import ReactPlayer from 'react-player'
 import {
   RiPlayFill, RiPauseFill, RiVolumeMuteFill, RiVolumeUpFill,
@@ -33,6 +33,7 @@ function getCollectionLabel(item) {
 export default function MediaPlayerPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, isAuthenticated } = useAuthStore()
   const { setMedia, setProgress, setDuration } = usePlayerStore()
 
@@ -95,12 +96,18 @@ export default function MediaPlayerPage() {
 
       if (!isLocked) {
         setMedia(m)
-        const playbackRes = await mediaService.getPlayback(id)
-        const playback = playbackRes.data.data.playback
-        const nextPlaybackUrl = mediaService.resolveStreamUrl(playback.streamUrl)
-        if (!nextPlaybackUrl) throw new Error('Missing playback URL')
-        setPlaybackUrl(nextPlaybackUrl)
-        setPlaybackSourceType(playback.sourceType || '')
+        const offlinePlaybackUrl = location.state?.offlineUrl || ''
+        if (offlinePlaybackUrl) {
+          setPlaybackUrl(offlinePlaybackUrl)
+          setPlaybackSourceType(offlinePlaybackUrl.includes('.m3u8') ? 'hls' : 'offline')
+        } else {
+          const playbackRes = await mediaService.getPlayback(id)
+          const playback = playbackRes.data.data.playback
+          const nextPlaybackUrl = mediaService.resolveStreamUrl(playback.streamUrl)
+          if (!nextPlaybackUrl) throw new Error('Missing playback URL')
+          setPlaybackUrl(nextPlaybackUrl)
+          setPlaybackSourceType(playback.sourceType || '')
+        }
         setPlaybackAttempt((value) => value + 1)
       }
     } catch (err) {
@@ -182,7 +189,7 @@ export default function MediaPlayerPage() {
         return
       }
 
-      const fileUrl = playbackUrl || mediaService.resolveStreamUrl(mediaService.getStreamUrl(id)) || res.data.data.fileUrl
+      const fileUrl = res.data.data.fileUrl || media?.mediaUrl || media?.fileUrl || playbackUrl || mediaService.resolveStreamUrl(mediaService.getStreamUrl(id))
       const cachedFile = await cacheDownloadFile({
         fileUrl,
         contentType: 'media',

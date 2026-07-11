@@ -35,6 +35,8 @@ export default function DownloadsPage({ embedded = false, contentType = '' }) {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [readerDownload, setReaderDownload] = useState(null)
+  const [readerUrl, setReaderUrl] = useState('')
   const { ref: loadMoreRef, inView: loadMoreInView } = useInView({ rootMargin: '320px' })
 
   const deviceId = localStorage.getItem('nendplay-device-id') || 'unknown'
@@ -153,12 +155,22 @@ export default function DownloadsPage({ embedded = false, contentType = '' }) {
 
   const handleOpenDownload = async (download) => {
     const cachedUrl = await getCachedObjectUrl(download.storageKey)
-    if (cachedUrl) {
-      window.open(cachedUrl, '_blank')
+    if (download.contentType === 'media') {
+      navigate(`/watch/${download.contentId}`, {
+        state: {
+          offlineUrl: cachedUrl || '',
+          offlineDownload: download,
+        },
+      })
       return
     }
-    if (download.contentType === 'media') navigate(`/watch/${download.contentId}`)
-    else window.open(download.contentSnapshot?.fileUrl, '_blank')
+    const documentUrl = cachedUrl || download.contentSnapshot?.fileUrl
+    if (!documentUrl) {
+      toast.error('Document is not available on this device')
+      return
+    }
+    setReaderDownload(download)
+    setReaderUrl(documentUrl)
   }
 
   const nonEmptyCategories = Object.entries(grouped)
@@ -377,6 +389,39 @@ export default function DownloadsPage({ embedded = false, contentType = '' }) {
             )}
           </div>
         </>
+      )}
+      {readerDownload && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3 md:p-6">
+          <div className="flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border"
+            style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center justify-between gap-3 border-b px-4 py-3"
+              style={{ borderColor: 'var(--color-border)' }}>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black" style={{ color: 'var(--color-text)' }}>
+                  {readerDownload.contentSnapshot?.title || 'Downloaded document'}
+                </p>
+                <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                  Offline reader
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setReaderDownload(null)
+                  setReaderUrl('')
+                }}
+                className="rounded-xl px-4 py-2 text-sm font-black"
+                style={{ background: 'var(--color-surface)', color: 'var(--color-text)' }}>
+                Close
+              </button>
+            </div>
+            <iframe
+              title={readerDownload.contentSnapshot?.title || 'Downloaded document'}
+              src={readerUrl}
+              className="h-full w-full flex-1 border-0 bg-white"
+            />
+          </div>
+        </div>
       )}
     </div>
   )

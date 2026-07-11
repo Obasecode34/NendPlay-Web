@@ -94,7 +94,7 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
         toast.success('Already downloaded')
         return
       }
-      const fileUrl = mediaService.resolveStreamUrl(mediaService.getStreamUrl(short._id)) || res.data.data.fileUrl
+      const fileUrl = res.data.data.fileUrl || short.mediaUrl || short.fileUrl || mediaService.resolveStreamUrl(mediaService.getStreamUrl(short._id))
       const cachedFile = await cacheDownloadFile({
         fileUrl,
         contentType: 'media',
