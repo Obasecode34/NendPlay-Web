@@ -378,8 +378,8 @@ export default function HomePage() {
   const { ref: loadMoreRef, inView: loadMoreInView } = useInView({ rootMargin: '320px' })
 
   const navigateMedia = (media) => {
-    if (isShortMedia(media)) navigate(`/shorts?open=${media._id}`)
-    else navigate(`/watch/${media._id}`)
+    if (isShortMedia(media)) navigate(`/shorts?open=${media._id}`, { state: { media } })
+    else navigate(`/watch/${media._id}`, { state: { media } })
   }
 
   const openNewsHighlight = (article) => {

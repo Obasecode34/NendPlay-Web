@@ -46,7 +46,7 @@ export default function MediaCard({ media, size = 'md' }) {
 
   return (
     <div
-      onClick={() => navigate(targetPath)}
+      onClick={() => navigate(targetPath, { state: { media } })}
       className={`${sizes[size]} flex-shrink-0 cursor-pointer group`}>
 
       {/* Thumbnail */}

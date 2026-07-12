@@ -45,21 +45,35 @@ function getMediaLabels(item = {}) {
   ].filter(Boolean).flatMap((value) => String(value).split(',')).map(normalizeLabel).filter(Boolean)
 }
 
+function getImmediatePlaybackUrl(item, id) {
+  const candidate = item?.streamUrl || item?.playbackUrl || item?.mediaUrl || item?.fileUrl || ''
+  if (candidate) return mediaService.resolveStreamUrl(candidate)
+  return id ? mediaService.resolveStreamUrl(mediaService.getStreamUrl(id)) : ''
+}
+
+function getPlaybackSourceType(url) {
+  if (!url) return ''
+  if (url.includes('.m3u8')) return 'hls'
+  return ''
+}
+
 export default function MediaPlayerPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
   const { user, isAuthenticated } = useAuthStore()
   const { setMedia, setProgress, setDuration } = usePlayerStore()
+  const routeMedia = location.state?.media || null
+  const initialPlaybackUrl = location.state?.offlineUrl || getImmediatePlaybackUrl(routeMedia, id)
 
   const playerRef = useRef(null)
-  const [media, setMediaData] = useState(null)
+  const [media, setMediaData] = useState(routeMedia)
   const [related, setRelated] = useState([])
-  const [collectionItems, setCollectionItems] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [collectionItems, setCollectionItems] = useState(routeMedia ? [routeMedia] : [])
+  const [loading, setLoading] = useState(!routeMedia)
   const [locked, setLocked] = useState(false)
-  const [playbackUrl, setPlaybackUrl] = useState('')
-  const [playbackSourceType, setPlaybackSourceType] = useState('')
+  const [playbackUrl, setPlaybackUrl] = useState(initialPlaybackUrl)
+  const [playbackSourceType, setPlaybackSourceType] = useState(getPlaybackSourceType(initialPlaybackUrl))
   const [playbackAttempt, setPlaybackAttempt] = useState(0)
   const [playing, setPlaying] = useState(true)
   const [volume, setVolume] = useState(0.8)
@@ -88,15 +102,28 @@ export default function MediaPlayerPage() {
     }
   }, [id])
 
+  useEffect(() => {
+    if (!playbackUrl || locked) return undefined
+    setPlaying(true)
+    const frame = window.requestAnimationFrame(() => {
+      const internalPlayer = playerRef.current?.getInternalPlayer?.()
+      internalPlayer?.play?.().catch?.(() => {})
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [playbackUrl, locked])
+
   const fetchMedia = async () => {
-    setLoading(true)
+    const optimisticUrl = location.state?.offlineUrl || getImmediatePlaybackUrl(location.state?.media, id)
+    setLoading(!location.state?.media)
     try {
       const res = await mediaService.getById(id)
       const { media: m, locked: isLocked } = res.data.data
       setMediaData(m)
       setLocked(isLocked)
-      setPlaybackUrl('')
-      setPlaybackSourceType('')
+      if (!optimisticUrl) {
+        setPlaybackUrl('')
+        setPlaybackSourceType('')
+      }
       playbackRetryCount.current = 0
       streamFallbackAttempted.current = false
       setCollectionItems([m, ...(m.collectionItems || [])].sort((a, b) => (
@@ -134,7 +161,7 @@ export default function MediaPlayerPage() {
           const playback = playbackRes.data.data.playback
           const nextPlaybackUrl = mediaService.resolveStreamUrl(playback.streamUrl)
           if (!nextPlaybackUrl) throw new Error('Missing playback URL')
-          setPlaybackUrl(nextPlaybackUrl)
+          if (nextPlaybackUrl !== playbackUrl) setPlaybackUrl(nextPlaybackUrl)
           setPlaybackSourceType(playback.sourceType || '')
         }
         setPlaybackAttempt((value) => value + 1)
@@ -402,11 +429,14 @@ export default function MediaPlayerPage() {
                 }}
                 onReady={() => { playbackRetryCount.current = 0 }}
                 onError={handlePlaybackError}
+                playsinline
                 config={{
                   file: {
                     forceHLS: playbackSourceType === 'hls' || streamUrl.includes('.m3u8') || streamUrl.includes('/hls'),
                     attributes: {
                       controlsList: 'nodownload',
+                      preload: 'auto',
+                      autoPlay: true,
                       playsInline: true,
                     },
                   },
