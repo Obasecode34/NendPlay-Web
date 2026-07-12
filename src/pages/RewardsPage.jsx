@@ -58,7 +58,7 @@ export default function RewardsPage() {
   const [verifyingPayment, setVerifyingPayment] = useState(false)
 
   const coins = status?.coins ?? user?.rewardCoins ?? 0
-  const pricePerDay = status?.paidAdFree?.pricePerDayNaira || 99
+  const pricePerDay = status?.paidAdFree?.pricePerDayNaira || 33.3
   const paidTotal = paidDays * pricePerDay
   const rewards = status?.rewards?.length ? status.rewards : defaultRewards
   const adFreeRewards = rewards.filter((reward) => reward.kind === 'ad_free')
