@@ -94,7 +94,8 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
         toast.success('Already downloaded')
         return
       }
-      const fileUrl = res.data.data.fileUrl || short.mediaUrl || short.fileUrl || mediaService.resolveStreamUrl(mediaService.getStreamUrl(short._id))
+      const rawFileUrl = res.data.data.fileUrl || short.mediaUrl || short.fileUrl || mediaService.getStreamUrl(short._id)
+      const fileUrl = mediaService.resolveStreamUrl(rawFileUrl)
       const cachedFile = await cacheDownloadFile({
         fileUrl,
         contentType: 'media',
@@ -112,7 +113,7 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
           type: short.type || 'short',
           category: short.category || '',
           duration: short.duration || 0,
-          mimeType: short.mimeType || res.data.data.mimeType || '',
+          mimeType: cachedFile.isHlsPackage ? 'application/vnd.apple.mpegurl' : short.mimeType || res.data.data.mimeType || '',
           fileUrl,
         },
       })

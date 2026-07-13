@@ -245,7 +245,8 @@ export default function MediaPlayerPage() {
         return
       }
 
-      const fileUrl = res.data.data.fileUrl || media?.mediaUrl || media?.fileUrl || playbackUrl || mediaService.resolveStreamUrl(mediaService.getStreamUrl(id))
+      const rawFileUrl = res.data.data.fileUrl || media?.mediaUrl || media?.fileUrl || playbackUrl || mediaService.getStreamUrl(id)
+      const fileUrl = mediaService.resolveStreamUrl(rawFileUrl)
       const cachedFile = await cacheDownloadFile({
         fileUrl,
         contentType: 'media',
@@ -263,7 +264,7 @@ export default function MediaPlayerPage() {
           type: media?.type || 'video',
           category: media?.category || '',
           duration: media?.duration || 0,
-          mimeType: media?.mimeType || res.data.data.mimeType || '',
+          mimeType: cachedFile.isHlsPackage ? 'application/vnd.apple.mpegurl' : media?.mimeType || res.data.data.mimeType || '',
           fileUrl,
         },
       })

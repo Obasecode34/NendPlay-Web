@@ -4,7 +4,7 @@ import { RiDownloadLine, RiDeleteBinLine, RiPlayFill, RiDeviceLine,
   RiWifiOffLine, RiBookOpenLine } from 'react-icons/ri'
 import { useInView } from 'react-intersection-observer'
 import toast from 'react-hot-toast'
-import { downloadService } from '../services/index'
+import { downloadService, mediaService } from '../services/index'
 import { deleteLocalDownload, getCachedObjectUrl, getLocalDownloads } from '../services/localDownloads'
 import useAuthStore from '../stores/authStore'
 import GoogleAdSlot from '../components/ads/GoogleAdSlot'
@@ -66,7 +66,6 @@ export default function DownloadsPage({ embedded = false, contentType = '' }) {
     else setLoading(true)
     try {
       const res = await downloadService.getAll({
-        deviceId,
         page: pageToLoad,
         limit: DOWNLOAD_PAGE_LIMIT,
         ...(contentType ? { contentType } : {}),
@@ -155,16 +154,17 @@ export default function DownloadsPage({ embedded = false, contentType = '' }) {
 
   const handleOpenDownload = async (download) => {
     const cachedUrl = await getCachedObjectUrl(download.storageKey)
+    const remoteUrl = mediaService.resolveStreamUrl(download.contentSnapshot?.fileUrl || '')
     if (download.contentType === 'media') {
       navigate(`/watch/${download.contentId}`, {
         state: {
-          offlineUrl: cachedUrl || '',
+          offlineUrl: cachedUrl || remoteUrl || '',
           offlineDownload: download,
         },
       })
       return
     }
-    const documentUrl = cachedUrl || download.contentSnapshot?.fileUrl
+    const documentUrl = cachedUrl || remoteUrl
     if (!documentUrl) {
       toast.error('Document is not available on this device')
       return

@@ -6,7 +6,7 @@ import {
 } from 'react-icons/ri'
 import { useInView } from 'react-intersection-observer'
 import toast from 'react-hot-toast'
-import { downloadService, novelService } from '../services/index'
+import { downloadService, mediaService, novelService } from '../services/index'
 import { cacheDownloadFile, upsertLocalDownloadRecord } from '../services/localDownloads'
 import { getDeviceId } from '../services/guestSession'
 import useAuthStore from '../stores/authStore'
@@ -419,7 +419,8 @@ export default function NovelHubPage() {
         deviceId,
         platform: 'web',
       })
-      const fileUrl = res.data.data.fileUrl || doc.fileUrl
+      const rawFileUrl = res.data.data.fileUrl || doc.fileUrl
+      const fileUrl = mediaService.resolveStreamUrl(rawFileUrl)
       const cachedFile = await cacheDownloadFile({ fileUrl, contentType: 'document', contentId: doc._id })
       upsertLocalDownloadRecord({
         download: res.data.data.download,
@@ -445,6 +446,7 @@ export default function NovelHubPage() {
         try {
           await downloadService.complete({
             downloadId: res.data.data.download._id,
+            deviceId,
             storageKey: cachedFile.storageKey,
             storedFileSize: cachedFile.storedFileSize || doc.fileSize || 0,
           })
