@@ -50,6 +50,14 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
     }
   }, [inView])
 
+  useEffect(() => {
+    if (isActive) {
+      setPlaying(true)
+    } else {
+      setPlaying(false)
+    }
+  }, [isActive])
+
   const handleLike = async (e) => {
     e.stopPropagation()
     if (liked) return
@@ -218,6 +226,7 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
         volume={muted ? 0 : 1}
         playsinline
         loop={false}
+        controls={false}
         onEnded={() => {
           addWatchHistory(short, { duration: short.duration })
           onEnded?.()
@@ -441,6 +450,23 @@ export default function ShortsPage() {
     return items
   }, [shorts])
 
+  useEffect(() => {
+    let cancelled = false
+    const loadOpenedShortFirst = async () => {
+      if (!openShortId || page !== 1 || feedMode !== 'all') return
+      try {
+        const res = await mediaService.getById(openShortId)
+        const fetched = res.data.data.media
+        if (cancelled || !fetched) return
+        setShorts((prev) => [fetched, ...prev.filter((short) => short._id !== fetched._id)])
+        setActiveId(openShortId)
+        setLoading(false)
+      } catch {}
+    }
+    loadOpenedShortFirst()
+    return () => { cancelled = true }
+  }, [openShortId, page, feedMode])
+
   useEffect(() => { fetchShorts() }, [page, feedMode])
 
   const fetchShorts = async () => {
@@ -452,7 +478,20 @@ export default function ShortsPage() {
         : mediaService.getShorts
       const res = await serviceCall({ page, limit: 10 })
       const { media, pagination } = res.data.data
-      setShorts(prev => page === 1 ? media : [...prev, ...media])
+      setShorts(prev => {
+        const nextMedia = Array.isArray(media) ? media : []
+        if (page === 1) {
+          const merged = openShortId
+            ? [...prev.filter((short) => short._id === openShortId), ...nextMedia.filter((short) => short._id !== openShortId)]
+            : nextMedia
+          return merged
+        }
+        const seen = new Set(prev.map((short) => short._id))
+        return [...prev, ...nextMedia.filter((short) => !seen.has(short._id))]
+      })
+      if (page === 1 && !openShortId && media?.[0]?._id) {
+        setActiveId((current) => current || media[0]._id)
+      }
       setHasMore(page < pagination.pages)
     } catch {
       toast.error('Failed to load Shorts')
