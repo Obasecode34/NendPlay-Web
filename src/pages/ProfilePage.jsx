@@ -12,6 +12,7 @@ import { clearWatchHistoryByDays, getWatchHistory } from '../services/watchHisto
 import MediaCard from '../components/media/MediaCard'
 import UploadModal from '../components/media/UploadModal'
 import GoogleAdSlot from '../components/ads/GoogleAdSlot'
+import NendPlayAdSlot from '../components/ads/NendPlayAdSlot'
 
 const PROFILE_PAGE_LIMIT = 20
 const HISTORY_DELETE_OPTIONS = [
@@ -316,6 +317,7 @@ export default function ProfilePage() {
         </div>
 
         <GoogleAdSlot placement="profile" className="mt-6" />
+        <NendPlayAdSlot placement="profile" className="mt-6" />
 
         <div className="card p-6 space-y-4 mt-6">
           <h2 className="font-display font-bold text-lg" style={{ color: 'var(--color-text)' }}>Continue Watching</h2>
@@ -500,6 +502,7 @@ export default function ProfilePage() {
       </div>
 
       <GoogleAdSlot placement="profile" className="mb-6" />
+      <NendPlayAdSlot placement="profile" className="mb-6" />
 
       {/* Subscription info */}
       {subscription?.isActive && (
