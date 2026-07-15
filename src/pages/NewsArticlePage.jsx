@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   RiArrowLeftLine, RiBookmarkLine, RiBookOpenLine, RiBriefcase4Line, RiCalendarLine,
@@ -190,6 +190,7 @@ function Comment({ item, onReply, onLike }) {
 export default function NewsArticlePage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAuthenticated } = useAuthStore()
   const [post, setPost] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -279,6 +280,15 @@ export default function NewsArticlePage() {
     } catch {}
   }
 
+  const handleBack = () => {
+    const fallback = post?.section === 'career' ? '/news?section=career' : '/news'
+    if (location.key && location.key !== 'default' && window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+    navigate(fallback, { replace: true })
+  }
+
   if (loading) return <div className="h-96 skeleton rounded-2xl" />
   if (!post) return null
 
@@ -307,7 +317,7 @@ export default function NewsArticlePage() {
       <div className="mx-auto max-w-5xl animate-fade-in pb-28">
         <article className="overflow-hidden rounded-[2rem] bg-white text-slate-950 shadow-2xl shadow-purple-950/10 ring-1 ring-purple-100">
           <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4 md:px-8">
-            <button type="button" onClick={() => navigate(-1)} className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-lg font-bold hover:bg-slate-100">
+            <button type="button" onClick={handleBack} className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-lg font-bold hover:bg-slate-100">
               <RiArrowLeftLine size={24} /> Back
             </button>
             <div className="flex items-center gap-3">
@@ -362,18 +372,28 @@ export default function NewsArticlePage() {
 
             <section className="mt-8 border-t border-slate-100 pt-8">
               <h3 className="mb-4 flex items-center gap-3 text-2xl font-black"><RiBookOpenLine className="text-purple-700" /> Responsibilities</h3>
-              <div className="space-y-4 text-base leading-7 text-slate-800 md:text-lg">
-                {job.responsibilities.map((item, index) => <p key={`${item}-${index}`} className="whitespace-pre-line">{item}</p>)}
-              </div>
+              <ul className="space-y-4 text-base leading-7 text-slate-800 md:text-lg">
+                {job.responsibilities.map((item, index) => (
+                  <li key={`${item}-${index}`} className="flex gap-3">
+                    <span className="mt-3 h-2 w-2 shrink-0 rounded-full bg-purple-700" />
+                    <span className="whitespace-pre-line">{item}</span>
+                  </li>
+                ))}
+              </ul>
             </section>
 
             <InArticleAd key={`career-responsibilities-ad-${adRefreshKey}`} placement="news" className="mt-8" />
 
             <section className="mt-8 border-t border-slate-100 pt-8">
               <h3 className="mb-4 flex items-center gap-3 text-2xl font-black"><RiCheckboxCircleFill className="text-purple-700" /> Requirements</h3>
-              <div className="space-y-4 text-base leading-7 text-slate-800 md:text-lg">
-                {job.requirements.map((item, index) => <p key={`${item}-${index}`} className="whitespace-pre-line">{item}</p>)}
-              </div>
+              <ul className="space-y-4 text-base leading-7 text-slate-800 md:text-lg">
+                {job.requirements.map((item, index) => (
+                  <li key={`${item}-${index}`} className="flex gap-3">
+                    <span className="mt-3 h-2 w-2 shrink-0 rounded-full bg-purple-700" />
+                    <span className="whitespace-pre-line">{item}</span>
+                  </li>
+                ))}
+              </ul>
             </section>
 
             <InArticleAd key={`career-requirements-ad-${adRefreshKey}`} placement="news" className="mt-8" />
@@ -480,7 +500,7 @@ export default function NewsArticlePage() {
     <div className="mx-auto max-w-5xl animate-fade-in pb-24">
       <article className="overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-black/10 ring-1 ring-black/5">
         <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4 md:px-8">
-          <button type="button" onClick={() => navigate(-1)} className="grid h-11 w-11 place-items-center rounded-full text-slate-950 hover:bg-slate-100">
+          <button type="button" onClick={handleBack} className="grid h-11 w-11 place-items-center rounded-full text-slate-950 hover:bg-slate-100">
             <RiArrowLeftLine size={26} />
           </button>
           <h1 className="text-xl font-black text-slate-950 md:text-3xl">
