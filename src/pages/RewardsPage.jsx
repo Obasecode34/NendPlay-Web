@@ -56,10 +56,22 @@ export default function RewardsPage() {
   const [paymentRef, setPaymentRef] = useState('')
   const [paying, setPaying] = useState(false)
   const [verifyingPayment, setVerifyingPayment] = useState(false)
+  const [withdrawCoins, setWithdrawCoins] = useState(3000)
+  const [bankName, setBankName] = useState('')
+  const [accountNumber, setAccountNumber] = useState('')
+  const [accountName, setAccountName] = useState('')
+  const [withdrawing, setWithdrawing] = useState(false)
 
   const coins = status?.coins ?? user?.rewardCoins ?? 0
   const pricePerDay = status?.paidAdFree?.pricePerDayNaira || 33.3
   const paidTotal = paidDays * pricePerDay
+  const withdrawalPolicy = status?.withdrawalPolicy || {
+    coinsPerNaira: 3,
+    minimumCoins: 3000,
+    minimumNaira: 1000,
+    verifiedAccountRequired: true,
+  }
+  const withdrawalAmount = Number(withdrawCoins || 0) / withdrawalPolicy.coinsPerNaira
   const rewards = status?.rewards?.length ? status.rewards : defaultRewards
   const adFreeRewards = rewards.filter((reward) => reward.kind === 'ad_free')
   const planRewards = rewards.filter((reward) => reward.kind === 'plan')
@@ -155,6 +167,29 @@ export default function RewardsPage() {
     }
   }
 
+  const requestWithdrawal = async () => {
+    if (!window.confirm(`Convert ${Number(withdrawCoins).toLocaleString()} coins to N${withdrawalAmount.toLocaleString()}?`)) return
+    setWithdrawing(true)
+    try {
+      const res = await rewardService.withdraw({
+        coins: Number(withdrawCoins),
+        bankName,
+        accountNumber,
+        accountName,
+      })
+      setStatus(res.data.data)
+      syncUser(res.data.data)
+      toast.success('Withdrawal request submitted')
+      setBankName('')
+      setAccountNumber('')
+      setAccountName('')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Withdrawal request failed')
+    } finally {
+      setWithdrawing(false)
+    }
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="max-w-3xl animate-fade-in">
@@ -201,11 +236,66 @@ export default function RewardsPage() {
       <div className="card p-4 mb-6 flex items-start gap-3" style={{ borderColor: 'rgba(245,197,66,0.28)', background: 'rgba(245,197,66,0.08)' }}>
         <RiStarFill className="mt-0.5 flex-shrink-0" style={{ color: '#F5C542' }} />
         <p className="text-sm leading-6" style={{ color: '#D9D0AF' }}>
-          Reward coins are optional NendPlay rewards. They have no cash value, cannot be transferred, and are only used for NendPlay ad-free access or plans. Rewarded ads are always optional and NendPlay is responsible for granting rewards.
+          Reward coins are optional NendPlay rewards. They can be redeemed for NendPlay ad-free access, plans, or verified cash withdrawals. Coins cannot be transferred, rewarded ads are always optional, and NendPlay is responsible for granting rewards.
         </p>
       </div>
 
       <GoogleAdSlot placement="subscription" className="mb-6" />
+
+      <div className="card p-6 mb-6" style={{ borderColor: 'rgba(245,197,66,0.28)' }}>
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+          <div>
+            <h2 className="font-display font-black text-2xl" style={{ color: 'var(--color-text)' }}>Convert coins to cash</h2>
+            <p className="text-sm mt-2" style={{ color: 'var(--color-text-muted)' }}>
+              {withdrawalPolicy.minimumCoins.toLocaleString()} coins = N{withdrawalPolicy.minimumNaira.toLocaleString()}. Minimum withdrawal is N{withdrawalPolicy.minimumNaira.toLocaleString()}.
+            </p>
+            {withdrawalPolicy.verifiedAccountRequired && !status?.isVerified ? (
+              <p className="text-sm mt-3 font-bold" style={{ color: '#F5C542' }}>
+                Verified account required before withdrawal.
+              </p>
+            ) : null}
+          </div>
+          <div className="rounded-2xl px-4 py-3 text-right" style={{ background: 'rgba(245,197,66,0.12)' }}>
+            <p className="text-xs font-bold" style={{ color: 'var(--color-text-muted)' }}>Selected value</p>
+            <p className="text-xl font-black text-white">
+              N{withdrawalAmount.toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-5">
+          <input
+            type="number"
+            min={withdrawalPolicy.minimumCoins}
+            step={withdrawalPolicy.minimumCoins}
+            value={withdrawCoins}
+            onChange={(event) => setWithdrawCoins(Number(event.target.value))}
+            className="input-base"
+            placeholder="Coins to convert" />
+          <input className="input-base" value={bankName} onChange={(event) => setBankName(event.target.value)} placeholder="Bank name" />
+          <input className="input-base" value={accountNumber} onChange={(event) => setAccountNumber(event.target.value)} placeholder="Account number" />
+          <input className="input-base" value={accountName} onChange={(event) => setAccountName(event.target.value)} placeholder="Account name" />
+        </div>
+        <button
+          disabled={withdrawing || !status?.isVerified}
+          onClick={requestWithdrawal}
+          className="w-full mt-4 py-3 rounded-xl font-black disabled:opacity-50"
+          style={{ background: '#F5C542', color: '#111' }}>
+          {withdrawing ? 'Submitting...' : 'Request withdrawal'}
+        </button>
+
+        {status?.withdrawals?.length ? (
+          <div className="mt-5 space-y-2">
+            <p className="text-sm font-black" style={{ color: 'var(--color-text)' }}>Recent withdrawals</p>
+            {status.withdrawals.slice(0, 3).map((item) => (
+              <div key={item._id} className="flex items-center justify-between rounded-xl px-3 py-2" style={{ background: 'var(--color-surface-high)' }}>
+                <span className="text-sm text-white">{item.coins.toLocaleString()} coins to N{Number(item.amountNaira).toLocaleString()}</span>
+                <span className="text-xs font-black" style={{ color: '#F5C542' }}>{item.status}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       <div className="card p-6 mb-6" style={{ borderColor: 'rgba(245,197,66,0.28)' }}>
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
