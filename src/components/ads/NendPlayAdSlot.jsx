@@ -189,6 +189,78 @@ export default function NendPlayAdSlot({ placement = 'home', className = '', var
     )
   }
 
+  if (placement !== 'home') {
+    return (
+      <article
+        className={`group relative w-full overflow-hidden rounded-[1.75rem] border border-white/20 bg-white/[0.07] p-5 text-left shadow-2xl shadow-black/35 backdrop-blur-xl ${className}`}
+        style={{ minHeight: 280 }}
+      >
+        <button type="button" onClick={openAd} className="absolute inset-0 z-10 text-left" aria-label={`Open ad: ${ad.title}`} />
+        <div className="absolute inset-0 opacity-45 blur-xl">
+          <WebAdCreative ad={ad} />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950/88 via-black/74 to-slate-900/70" />
+
+        <div className="relative z-20 mb-5 flex justify-center">
+          <span className="rounded-full border border-white/10 bg-white/10 px-5 py-2 text-sm font-black uppercase tracking-wide text-white/80">
+            Sponsored
+          </span>
+        </div>
+
+        <div className="relative z-20 grid gap-6 lg:grid-cols-[0.82fr_1fr] lg:items-center">
+          <div className="flex min-w-0 flex-col justify-between gap-5">
+            <div>
+              <div className="mb-6 flex items-center gap-4">
+                <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white/80 bg-black shadow-xl">
+                  {ad.logoUrl ? (
+                    <img src={ad.logoUrl} alt={advertiser} className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <span className="text-2xl font-black text-amber-300">NPL</span>
+                  )}
+                </div>
+                <p className="min-w-0 truncate text-2xl font-black text-white">
+                  {advertiser} <RiShieldCheckFill className="inline text-blue-400" />
+                </p>
+              </div>
+
+              <h3 className="line-clamp-2 text-3xl font-black leading-tight text-white">{ad.title}</h3>
+              {ad.description && (
+                <p className="mt-5 line-clamp-3 max-w-xl text-xl leading-relaxed text-white/78">{ad.description}</p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={openAd}
+                className="relative z-30 inline-flex min-w-56 items-center justify-center gap-3 rounded-2xl bg-amber-300 px-7 py-4 text-xl font-black text-black shadow-xl transition hover:bg-amber-200"
+              >
+                {cta} <RiArrowRightSLine size={30} />
+              </button>
+            </div>
+          </div>
+
+          <div className="relative min-h-64 overflow-hidden rounded-[1.5rem] bg-black shadow-2xl ring-1 ring-white/10 lg:min-h-[360px]">
+            <WebAdCreative ad={ad} />
+            <div className="absolute inset-0 bg-black/5" />
+            <button
+              type="button"
+              onClick={shareAd}
+              className="absolute bottom-4 right-4 z-30 grid h-11 w-11 place-items-center rounded-full bg-black/50 text-white backdrop-blur"
+              aria-label="Share ad"
+            >
+              <RiShareLine size={26} />
+            </button>
+          </div>
+        </div>
+
+        <span className="relative z-20 mt-5 inline-flex h-11 w-11 items-center justify-center rounded-xl text-white/90">
+          <RiBookmarkLine size={30} />
+        </span>
+      </article>
+    )
+  }
+
   return (
     <article
       className={`group relative w-full overflow-hidden rounded-[1.75rem] text-left shadow-2xl shadow-black/30 ring-1 ring-white/15 ${className}`}
