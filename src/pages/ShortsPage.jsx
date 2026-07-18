@@ -34,6 +34,7 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
   const [commentCount, setCommentCount] = useState(short.commentCount || (short.comments ? short.comments.length : 0))
   const [saved, setSaved] = useState(false)
   const [loadingComments, setLoadingComments] = useState(false)
+  const [played, setPlayed] = useState(0)
   const shortFrameStyle = {
     height: 'min(820px, max(420px, calc(100vh - 190px)))',
     aspectRatio: '9 / 16',
@@ -231,17 +232,38 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
           addWatchHistory(short, { duration: short.duration })
           onEnded?.()
         }}
+        onProgress={({ played }) => setPlayed(played || 0)}
         width="100%"
         height="100%"
         style={{ objectFit: 'cover' }}
         config={{ file: { attributes: { playsInline: true, style: { objectFit: 'cover', width: '100%', height: '100%' } } } }}
       />
 
-      {/* Gradient overlay */}
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%)' }} />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.02) 38%, rgba(0,0,0,0.72) 100%)',
+        }}
+      />
 
-      {/* Play/pause indicator */}
+      <div className="absolute left-6 right-6 top-7 z-20 flex items-center justify-between">
+        <div className="leading-none text-white drop-shadow-lg">
+          <div className="text-4xl font-black tracking-normal">NPL</div>
+          <div className="mt-1 text-[9px] font-bold tracking-[0.38em]">NENDPLAY</div>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            toast('Shorts search is coming soon.')
+          }}
+          className="grid h-12 w-12 place-items-center rounded-full bg-black/15 text-white backdrop-blur-sm"
+          aria-label="Search Shorts"
+        >
+          <span className="text-4xl leading-none">⌕</span>
+        </button>
+      </div>
+
       {!playing && (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="w-16 h-16 rounded-full flex items-center justify-center"
@@ -251,101 +273,42 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
         </div>
       )}
 
-      {/* Bottom info */}
-      <div className="absolute bottom-0 left-0 right-0 p-5">
-        <div className="flex items-end justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <p className="font-display font-bold text-white text-lg leading-tight truncate">
-              {short.title}
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <p className="text-white/80 text-sm font-semibold">
-                @{short.uploadedBy?.username || short.uploadedBy?.profileName || 'creator'}
-              </p>
-              <button
-                onClick={handleSubscribe}
-                className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
-                  subscribed ? 'bg-white/15 text-white' : 'bg-white text-black'
-                }`}
-              >
-                {subscribed ? 'Subscribed' : 'Subscribe'}
-              </button>
-              {subscriberCount > 0 && (
-                <span className="text-white/50 text-xs">
-                  {formatCount(subscriberCount)} subscribers
-                </span>
-              )}
-            </div>
-            {short.description && (
-              <p className="text-white/50 text-xs mt-1 line-clamp-2">
-                {short.description}
-              </p>
-            )}
-          </div>
+      <div className="absolute bottom-14 left-6 right-24 z-20">
+        <p className="line-clamp-2 text-xl font-black leading-tight text-white drop-shadow-lg">
+          {short.title}
+        </p>
+        {short.description && (
+          <p className="mt-1 line-clamp-1 text-xs font-medium text-white/75 drop-shadow">
+            {short.description}
+          </p>
+        )}
+      </div>
 
-          {/* Side actions */}
-          <div className="flex flex-col items-center gap-4">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setMuted((value) => !value)
-                setPlaying(true)
-              }}
-              className="flex flex-col items-center gap-1"
-            >
-              {muted
-                ? <RiVolumeMuteFill className="text-2xl text-white" />
-                : <RiVolumeUpFill className="text-2xl text-white" />
-              }
-              <span className="text-white text-xs">{muted ? 'Muted' : 'Sound'}</span>
-            </button>
+      <div className="absolute bottom-28 right-4 z-20 flex flex-col items-center gap-5">
+        <button onClick={handleLike} className="flex flex-col items-center gap-1 text-white">
+          {liked ? <RiHeartFill className="text-4xl text-red-500" /> : <RiHeartFill className="text-4xl text-white" />}
+          <span className="text-sm font-bold">{formatCount(short.likeCount + (liked ? 1 : 0))}</span>
+        </button>
 
-            <button onClick={handleLike}
-              className="flex flex-col items-center gap-1">
-              {liked
-                ? <RiHeartFill className="text-2xl text-red-500" />
-                : <RiHeartLine className="text-2xl text-white" />
-              }
-              <span className="text-white text-xs">{short.likeCount + (liked ? 1 : 0)}</span>
-            </button>
+        <button onClick={handleToggleComments} className="flex flex-col items-center gap-1 text-white">
+          <RiChat1Line className="text-4xl" />
+          <span className="text-sm font-bold">{formatCount(commentCount)}</span>
+        </button>
 
-            <button onClick={handleDislike}
-              className="flex flex-col items-center gap-1">
-              {disliked
-                ? <RiThumbDownLine className="text-2xl text-blue-400" />
-                : <RiThumbDownLine className="text-2xl text-white" />
-              }
-              <span className="text-white text-xs">{short.dislikeCount + (disliked ? 1 : 0)}</span>
-            </button>
+        <button onClick={handleSave} className="flex flex-col items-center gap-1 text-white">
+          {saved ? <RiBookmarkFill className="text-4xl text-yellow-300" /> : <RiBookmarkFill className="text-4xl" />}
+          <span className="text-sm font-bold">{saved ? 'Saved' : 'Save'}</span>
+        </button>
 
-            <button onClick={handleToggleComments}
-              className="flex flex-col items-center gap-1">
-              <RiChat1Line className="text-2xl text-white" />
-              <span className="text-white text-xs">{commentCount}</span>
-            </button>
+        <button onClick={handleDownload} className="flex flex-col items-center gap-1 text-white">
+          <RiDownloadLine className="text-4xl" />
+          <span className="text-sm font-bold">Download</span>
+        </button>
 
-            <button onClick={handleSave}
-              className="flex flex-col items-center gap-1">
-              {saved
-                ? <RiBookmarkFill className="text-2xl text-yellow-300" />
-                : <RiBookmarkLine className="text-2xl text-white" />
-              }
-              <span className="text-white text-xs">{saved ? 'Saved' : 'Save'}</span>
-            </button>
-
-            <button onClick={handleDownload}
-              className="flex flex-col items-center gap-1">
-              <RiDownloadLine className="text-2xl text-white" />
-              <span className="text-white text-xs">Download</span>
-            </button>
-
-            <button onClick={handleShare}
-              className="flex flex-col items-center gap-1">
-              <RiShareLine className="text-2xl text-white" />
-              <span className="text-white text-xs">Share</span>
-            </button>
-          </div>
-        </div>
+        <button onClick={handleShare} className="flex flex-col items-center gap-1 text-white">
+          <RiShareLine className="text-4xl" />
+          <span className="text-sm font-bold">Share</span>
+        </button>
       </div>
 
       {showComments && (
@@ -386,13 +349,9 @@ function ShortCard({ short, isActive, onActivate, onEnded }) {
         </div>
       )}
 
-      {/* Duration badge */}
-      {short.duration > 0 && (
-        <div className="absolute top-3 right-3 px-2 py-1 rounded-lg text-xs font-mono text-white"
-          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
-          {Math.floor(short.duration / 60)}:{String(Math.floor(short.duration % 60)).padStart(2, '0')}
-        </div>
-      )}
+      <div className="absolute bottom-6 left-6 right-6 z-20 h-1 overflow-hidden rounded-full bg-white/45">
+        <div className="h-full rounded-full bg-white" style={{ width: `${Math.min(played, 1) * 100}%` }} />
+      </div>
     </div>
   )
 }
