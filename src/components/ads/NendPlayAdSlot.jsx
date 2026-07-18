@@ -31,7 +31,7 @@ function WebAdCreative({ ad }) {
       <div className="absolute inset-0 overflow-hidden" style={{ background: '#05050F' }}>
         <video
           src={ad.mediaUrl}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover object-center"
           autoPlay
           muted={muted}
           loop
@@ -64,7 +64,7 @@ function WebAdCreative({ ad }) {
 
   return (
     <div className="absolute inset-0 overflow-hidden" style={{ background: '#05050F' }}>
-      <img src={ad.mediaUrl} alt={ad.title} className="h-full w-full object-cover" loading="lazy" />
+      <img src={ad.mediaUrl} alt={ad.title} className="h-full w-full object-cover object-center" loading="lazy" />
     </div>
   )
 }
@@ -133,7 +133,7 @@ export default function NendPlayAdSlot({ placement = 'home', className = '' }) {
   return (
     <article
       className={`group relative w-full overflow-hidden rounded-[1.75rem] text-left shadow-2xl shadow-black/30 ring-1 ring-white/15 ${className}`}
-      style={{ aspectRatio: '16 / 9', background: '#05050F' }}
+      style={{ aspectRatio: '16 / 9', minHeight: 260, background: '#05050F' }}
     >
       <button type="button" onClick={openAd} className="absolute inset-0 z-10 text-left" aria-label={`Open ad: ${ad.title}`} />
       <WebAdCreative ad={ad} />
