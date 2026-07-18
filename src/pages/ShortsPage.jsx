@@ -420,12 +420,12 @@ function ShortsAdCard({ adItem, isActive, onActivate, onEnded }) {
     <div
       id={`short-${adItem._id}`}
       ref={ref}
-      className="relative flex-shrink-0 overflow-hidden rounded-2xl p-4 shadow-2xl"
+      className="relative flex-shrink-0 overflow-hidden rounded-2xl shadow-2xl"
       style={shortFrameStyle}
     >
-      <div className="flex h-full w-full flex-col items-center justify-center gap-3">
-        <GoogleAdSlot placement="shorts" className="w-full" />
-        <NendPlayAdSlot placement="shorts" className="w-full" />
+      <div className="h-full w-full">
+        <NendPlayAdSlot placement="shorts" variant="shorts" className="h-full w-full" />
+        <GoogleAdSlot placement="shorts" className="absolute inset-x-4 bottom-3 z-40" />
       </div>
     </div>
   )
