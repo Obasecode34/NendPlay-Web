@@ -20,6 +20,15 @@ function formatCount(value = 0) {
   return `${count}`
 }
 
+function shuffleItems(items = []) {
+  const shuffled = [...items]
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    ;[shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]]
+  }
+  return shuffled
+}
+
 function ShortCard({ short, isActive, onActivate, onEnded }) {
   const { ref, inView } = useInView({ threshold: 0.7 })
   const [playing, setPlaying] = useState(false)
@@ -440,9 +449,10 @@ export default function ShortsPage() {
       setShorts(prev => {
         const nextMedia = Array.isArray(media) ? media : []
         if (page === 1) {
+          const randomizedMedia = shuffleItems(nextMedia)
           const merged = openShortId
-            ? [...prev.filter((short) => short._id === openShortId), ...nextMedia.filter((short) => short._id !== openShortId)]
-            : nextMedia
+            ? [...prev.filter((short) => short._id === openShortId), ...randomizedMedia.filter((short) => short._id !== openShortId)]
+            : randomizedMedia
           return merged
         }
         const seen = new Set(prev.map((short) => short._id))
@@ -493,6 +503,12 @@ export default function ShortsPage() {
       setPage((prev) => prev + 1)
     }
   }
+
+  useEffect(() => {
+    if (!activeId || feedItems.length <= 1) return undefined
+    const timer = setTimeout(() => advanceToNext(activeId), 240000)
+    return () => clearTimeout(timer)
+  }, [activeId, feedItems.length])
 
   useEffect(() => {
     if (!openShortId || loading) return
